@@ -55,19 +55,19 @@
                                                                                :repeat cells
                                                                                :summing (raylib:vector2-y (scene2d-cell-size cell)) :of-type single-float))))))
 
-(defstruct scene2d-tiling-scroll-style
+(defstruct scene2d-tile-scroll-style
   (tile (load-asset 'raylib:texture +scene2d-window-default-background-texture+ :format :png)))
 
-(defstruct (scene2d-tiling-scroll (:include scene2d-scissor))
-  (style (make-scene2d-tiling-scroll-style) :type scene2d-tiling-scroll-style))
+(defstruct (scene2d-tile-scroll (:include scene2d-layout))
+  (style (make-scene2d-tile-scroll-style) :type scene2d-tile-scroll-style))
 
-(defun scene2d-tiling-scroll-offset (scroll)
-  (scene2d-table-position (scene2d-tiling-scroll-content scroll)))
+(defun scene2d-tile-scroll-offset (scroll)
+  (scene2d-table-position (scene2d-tile-scroll-content scroll)))
 
-(defmethod scene2d-layout ((scroll scene2d-tiling-scroll))
-  (loop :with table := (setf (scene2d-tiling-scroll-content scroll) (make-scene2d-table))
-        :with size := (scene2d-tiling-scroll-size scroll)
-        :and tile := (scene2d-tiling-scroll-style-tile (scene2d-tiling-scroll-style scroll))
+(defmethod scene2d-layout ((scroll scene2d-tile-scroll))
+  (loop :with table := (setf (scene2d-tile-scroll-content scroll) (make-scene2d-table))
+        :with size := (scene2d-tile-scroll-size scroll)
+        :and tile := (scene2d-tile-scroll-style-tile (scene2d-tile-scroll-style scroll))
         :with tile-size := (let ((child (ensure-scene2d-node tile))) (scene2d-layout child) (scene2d-size child))
         :with rows := (1+ (ceiling (raylib:vector2-y size) (raylib:vector2-y tile-size)))
         :and cols := (1+ (ceiling (raylib:vector2-x size) (raylib:vector2-x tile-size)))
@@ -78,18 +78,18 @@
         :finally
            (scene2d-layout table)
            (raylib:%vector2-subtract
-            (& (scene2d-tiling-scroll-size scroll))
+            (& (scene2d-tile-scroll-size scroll))
             (& (scene2d-size table)) (& tile-size))))
 
-(defmethod scene2d-draw ((scroll scene2d-tiling-scroll) position origin scale rotation tint)
-  (let* ((child (scene2d-tiling-scroll-content scroll))
+(defmethod scene2d-draw ((scroll scene2d-tile-scroll) position origin scale rotation tint)
+  (let* ((child (scene2d-tile-scroll-content scroll))
          (vbox child)
          (vcells (scene2d-box-content vbox))
          (hbox (scene2d-cell-content (first vcells)))
          (hcells (scene2d-box-content hbox))
          (visible-rows (1- (length vcells)))
          (visible-cols (1- (length hcells)))
-         (visible-size (scene2d-tiling-scroll-size scroll)))
+         (visible-size (scene2d-tile-scroll-size scroll)))
     (unless (or (zerop (raylib:vector2-x visible-size)) (zerop (raylib:vector2-y visible-size)))
       (let ((tile-width (/ (raylib:vector2-x visible-size) (coerce visible-cols 'single-float)))
             (tile-height (/ (raylib:vector2-y visible-size) (coerce visible-rows 'single-float))))
@@ -104,26 +104,26 @@
             (setf child-x original-child-x
                   child-y original-child-y)))))))
 
-(defun scene2d-tiling-scroll-region-p (instance)
+(defun scene2d-tile-scroll-region-p (instance)
   (and (scene2d-scissor-p instance)
-       (scene2d-tiling-scroll-p (scene2d-scissor-content instance))))
+       (scene2d-tile-scroll-p (scene2d-scissor-content instance))))
 
-(deftype scene2d-tiling-scroll-region ()
-  '(and scene2d-scissor (satisfies scene2d-tiling-scroll-region-p)))
+(deftype scene2d-tile-scroll-region ()
+  '(and scene2d-scissor (satisfies scene2d-tile-scroll-region-p)))
 
-(defstruct scene2d-tiling-scroll-region-style
-  (tiling-scroll-style (make-scene2d-tiling-scroll-style) :type scene2d-tiling-scroll-style))
+(defstruct scene2d-tile-scroll-region-style
+  (tile-scroll-style (make-scene2d-tile-scroll-style) :type scene2d-tile-scroll-style))
 
-(defun make-scene2d-tiling-scroll-region (&rest args
+(defun make-scene2d-tile-scroll-region (&rest args
                                           &key
                                             (size (raylib:make-vector2 :x 100.0 :y 100.0))
-                                            (style (make-scene2d-tiling-scroll-region-style))
+                                            (style (make-scene2d-tile-scroll-region-style))
                                           &allow-other-keys)
   (remove-from-plistf args :style)
-  (apply #'make-scene2d-scissor :content (make-scene2d-tiling-scroll
-                                          :style (scene2d-tiling-scroll-region-style-tiling-scroll-style style)
+  (apply #'make-scene2d-scissor :content (make-scene2d-tile-scroll
+                                          :style (scene2d-tile-scroll-region-style-tile-scroll-style style)
                                           :size (raylib:copy-vector2 size))
                                 :size size args))
 
-(defun scene2d-tiling-scroll-region-offset (region)
-  (scene2d-tiling-scroll-offset (scene2d-scissor-content region)))
+(defun scene2d-tile-scroll-region-offset (region)
+  (scene2d-tile-scroll-offset (scene2d-scissor-content region)))

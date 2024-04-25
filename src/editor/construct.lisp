@@ -26,7 +26,7 @@
                                     scene2d-margin
                                     scene2d-container
                                     scene2d-coordinate-truncator
-                                    scene2d-tiling-scroll-region
+                                    scene2d-tile-scroll-region
                                     select-box
                                     dialog-box
                                     dialog-box-text))
@@ -185,7 +185,7 @@
       (with-sent-preview-function ()
         (await (edit-construct value))))))
 
-(defmethod edit-construct-argument (type (name (eql :tiling-scroll-style)) &optional (value (list 'scene2d-tiling-scroll-style)))
+(defmethod edit-construct-argument (type (name (eql :tile-scroll-style)) &optional (value (list 'scene2d-tile-scroll-style)))
   (with-received-preview-function
     (async
       (with-sent-preview-function ()

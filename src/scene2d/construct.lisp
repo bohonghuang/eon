@@ -174,11 +174,11 @@
 
 (define-scene2d-default-construct-form scene2d-window-style (background))
 
-(define-scene2d-default-construct-form scene2d-tiling-scroll-region (size style))
+(define-scene2d-default-construct-form scene2d-tile-scroll-region (size style))
 
-(define-scene2d-default-construct-form scene2d-tiling-scroll-style (tile))
+(define-scene2d-default-construct-form scene2d-tile-scroll-style (tile))
 
-(define-scene2d-default-construct-form scene2d-tiling-scroll-region-style (tiling-scroll-style))
+(define-scene2d-default-construct-form scene2d-tile-scroll-region-style (tile-scroll-style))
 
 (defstruct (scene2d-constructed (:include scene2d-container))
   (metadata (make-hash-table) :type hash-table))
