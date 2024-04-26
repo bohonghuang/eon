@@ -6,14 +6,18 @@
   (thunk #'values :type function)
   (matrix (raylib:make-matrix) :type raylib:matrix))
 
-(defun make-shadow-map-renderer (&key (camera (raylib:make-camera-3d)) &aux renderer)
+(defun make-shadow-map-renderer (&key
+                                   (camera (raylib:make-camera-3d))
+                                   (size (raylib:make-vector2
+                                          :x (coerce +world-viewport-default-width+ 'single-float)
+                                          :y (coerce +world-viewport-default-height+ 'single-float)))
+                                   (filter :bilinear)
+                                 &aux renderer)
   (setf renderer (%make-shadow-map-renderer
                   :camera camera
                   :canvas (scene2d-construct
                            (scene2d-canvas
-                            :size (raylib:make-vector2
-                                   :x (coerce +world-viewport-default-width+ 'single-float)
-                                   :y (coerce +world-viewport-default-height+ 'single-float))
+                            :size size
                             :renderer (lambda ()
                                         (raylib:with-mode-3d (shadow-map-renderer-camera renderer)
                                           (clet ((proj (foreign-alloca '(:struct raylib:matrix)))
@@ -21,7 +25,11 @@
                                             (rlgl:%get-matrix-projection proj)
                                             (rlgl:%get-matrix-modelview view)
                                             (raylib:%matrix-multiply (& (shadow-map-renderer-matrix renderer)) proj view))
-                                          (funcall (shadow-map-renderer-thunk renderer)))))))))
+                                          (funcall (shadow-map-renderer-thunk renderer))))))))
+  (raylib:set-texture-filter
+   (texture-region-texture (scene2d-canvas-content (shadow-map-renderer-canvas renderer)))
+   (foreign-enum-value 'raylib:texture-filter filter))
+  renderer)
 
 (defun shadow-map-renderer-texture (renderer)
   (texture-region-texture (scene2d-canvas-content (shadow-map-renderer-canvas renderer))))
