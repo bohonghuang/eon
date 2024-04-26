@@ -26,6 +26,54 @@
         (or (gethash asset-type type-table) (return-from asset-loaded-p nil))
       (gethash asset data-info))))
 
+(defun unload-asset-finalizer (&rest data-list)
+  (let ((context (tg:make-weak-pointer *game-loop-context*)))
+    (lambda ()
+      (when-let ((*game-loop-context* (tg:weak-pointer-value context)))
+        (add-game-loop-hook (lambda ()
+                              (loop :for data :in data-list
+                                    :when (asset-loaded-p data)
+                                      :do (unload-asset data)))
+                            :before nil)))))
+
+(defun register-unshareable-asset (data
+                                   &optional
+                                     (finalized nil)
+                                     (finalizer #'unload-asset-finalizer)
+                                   &aux
+                                     (asset-type (type-of data)))
+  (with-accessors ((type-table asset-manager-type-table)) *asset-manager*
+    (with-accessors ((data-info asset-type-data-info))
+        (ensure-gethash asset-type type-table (make-asset-type :name asset-type))
+      (when (gethash data data-info)
+        (error "Asset ~A has already been loaded." data))
+      (setf (gethash data data-info) (make-asset-info :type asset-type :data data :reference-counter 1))))
+  (if finalized
+      (progn
+        (assert (not (eq data finalized)))
+        (tg:finalize finalized (funcall finalizer data)))
+      data))
+
+(defun deregister-unshareable-asset (data &optional (test #'eql) &aux (asset-type (type-of data)))
+  (with-accessors ((type-table asset-manager-type-table)) *asset-manager*
+    (with-accessors ((data-info asset-type-data-info))
+        (ensure-gethash asset-type type-table (error "No ~A is loaded." asset-type))
+      (if-let ((loaded-data (loop :for loaded-data :being :the hash-key :in data-info
+                                  :when (funcall test loaded-data data)
+                                    :return loaded-data)))
+        (progn (remhash loaded-data data-info) loaded-data)
+        (error "Asset ~A is not loaded." data)))))
+
+(defmacro with-registered-unshareable-asset ((data-form &optional test) &body body)
+  (with-gensyms (data)
+    `(let ((,data ,data-form))
+       (if (asset-loaded-p ,data)
+           (progn . ,body)
+           (progn
+             (register-unshareable-asset ,data)
+             (unwind-protect (progn . ,body)
+               (deregister-unshareable-asset ,data . ,(when test (list test)))))))))
+
 (defmethod load-asset :around (asset-type source &key)
   (with-accessors ((type-table asset-manager-type-table)) *asset-manager*
     (with-accessors ((source-info asset-type-source-info)
@@ -125,64 +173,57 @@
   (raylib:unload-sound sound))
 
 (defmethod load-asset ((asset-type (eql 'raylib:model)) (path pathname) &key)
-  (raylib:load-model (namestring path)))
+  (let ((model (raylib:load-model (namestring path))))
+    (throw 'load-asset (register-unshareable-asset model (cobj:pointer-cobject (& model) 'raylib:model)))))
+
+(defmethod load-asset :around ((asset-type (eql 'raylib:model)) (path pathname) &key)
+  (declare (ignore asset-type path))
+  (catch 'load-asset (call-next-method)))
 
 (defmethod unload-asset ((model raylib:model))
-  (raylib:unload-model model))
+  (let ((model (deregister-unshareable-asset model #'cobj:cobject-eq)))
+    (throw 'unload-asset (raylib:unload-model model))))
+
+(defmethod unload-asset :around ((model raylib:model))
+  (with-registered-unshareable-asset (model #'cobj:cobject-eq)
+    (catch 'unload-asset (call-next-method))))
+
+(defstruct (raylib::model-animations (:include cobj:carray)))
+
+(export 'raylib::model-animations :raylib)
+
+(defcstruct cint
+  (value :int))
+
+(cobj:define-cobject-class (:struct cint))
+
+(defmethod load-asset ((asset-type (eql 'raylib::model-animations)) (path pathname) &key)
+  (let* ((cint (make-cint))
+         (cpointer (raylib:load-model-animations (namestring path) cint))
+         (cobject (cobj:manage-cobject
+                   (make-model-animations
+                    :pointer (cobj:cobject-pointer cpointer)
+                    :element-type (cobj::cpointer-element-type cpointer)
+                    :dimensions (list (cint-value cint))))))
+    (throw 'load-asset (register-unshareable-asset cobject (copy-model-animations cobject)))))
+
+(defmethod load-asset :around ((asset-type (eql 'raylib::model-animations)) (path pathname) &key)
+  (declare (ignore asset-type path))
+  (catch 'load-asset (call-next-method)))
+
+(defmethod unload-asset ((animations raylib::model-animations))
+  (let ((animations (deregister-unshareable-asset animations #'cobj:cobject-eq)))
+    (throw 'unload-asset (raylib:%unload-model-animations (cobj:unmanage-cobject animations) (cobj:clength animations)))))
+
+(defmethod unload-asset :around ((animations raylib::model-animations))
+  (with-registered-unshareable-asset (animations #'cobj:cobject-eq)
+    (catch 'unload-asset (call-next-method))))
 
 (defmethod load-asset ((asset-type (eql 'raylib:font)) (path pathname) &key)
   (raylib:load-font (namestring path)))
 
 (defmethod unload-asset ((font raylib:font))
   (raylib:unload-font font))
-
-(defun unload-asset-finalizer (&rest data-list)
-  (let ((context (tg:make-weak-pointer *game-loop-context*)))
-    (lambda ()
-      (when-let ((*game-loop-context* (tg:weak-pointer-value context)))
-        (add-game-loop-hook (lambda ()
-                              (loop :for data :in data-list
-                                    :when (asset-loaded-p data)
-                                      :do (unload-asset data)))
-                            :before nil)))))
-
-(defun register-unshareable-asset (data
-                                   &optional
-                                     (finalized nil)
-                                     (finalizer #'unload-asset-finalizer)
-                                   &aux
-                                     (asset-type (type-of data)))
-  (with-accessors ((type-table asset-manager-type-table)) *asset-manager*
-    (with-accessors ((data-info asset-type-data-info))
-        (ensure-gethash asset-type type-table (make-asset-type :name asset-type))
-      (when (gethash data data-info)
-        (error "Asset ~A has already been loaded." data))
-      (setf (gethash data data-info) (make-asset-info :type asset-type :data data :reference-counter 1))))
-  (if finalized
-      (progn
-        (assert (not (eq data finalized)))
-        (tg:finalize finalized (funcall finalizer data)))
-      data))
-
-(defun deregister-unshareable-asset (data &optional (test #'eql) &aux (asset-type (type-of data)))
-  (with-accessors ((type-table asset-manager-type-table)) *asset-manager*
-    (with-accessors ((data-info asset-type-data-info))
-        (ensure-gethash asset-type type-table (error "No ~A is loaded." asset-type))
-      (if-let ((loaded-data (loop :for loaded-data :being :the hash-key :in data-info
-                                  :when (funcall test loaded-data data)
-                                    :return loaded-data)))
-        (progn (remhash loaded-data data-info) loaded-data)
-        (error "Asset ~A is not loaded." data)))))
-
-(defmacro with-registered-unshareable-asset ((data-form &optional test) &body body)
-  (with-gensyms (data)
-    `(let ((,data ,data-form))
-       (if (asset-loaded-p ,data)
-           (progn . ,body)
-           (progn
-             (register-unshareable-asset ,data)
-             (unwind-protect (progn . ,body)
-               (deregister-unshareable-asset ,data . ,(when test (list test)))))))))
 
 (defmethod load-asset :around ((asset-type (eql 'raylib:texture)) (image raylib:image) &key)
   (catch 'load-asset (call-next-method)))
