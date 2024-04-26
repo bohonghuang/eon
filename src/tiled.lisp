@@ -20,23 +20,19 @@
   (etypecase tile
     (tiled:tiled-tile
      (let* ((tileset (tiled:tile-tileset tile))
-            (tileset-columns (tiled:tileset-columns tileset))
-            (tile-id (tiled:tile-id tile))
             (tile-width (tiled:tileset-tile-width tileset))
             (tile-height (tiled:tileset-tile-height tileset)))
-       (declare (type non-negative-fixnum tileset-columns tile-id tile-width tile-height))
-       (multiple-value-bind (tile-row tile-column) (truncate tile-id tileset-columns)
-         (declare (type non-negative-fixnum tile-row tile-column))
-         (let ((tile-x (* tile-column tile-width))
-               (tile-y (* tile-row tile-height)))
-           (declare (type non-negative-fixnum tile-x tile-y))
-           (make-texture-region
-            :texture (tiled-tileset-texture tileset)
-            :region (raylib:make-rectangle
-                     :x (coerce tile-x 'single-float)
-                     :y (coerce tile-y 'single-float)
-                     :width (coerce tile-width 'single-float)
-                     :height (coerce tile-height 'single-float)))))))))
+       (declare (type non-negative-fixnum tile-width tile-height))
+       (let ((tile-x (tiled:tile-pixel-x tile))
+             (tile-y (tiled:tile-pixel-y tile)))
+         (declare (type non-negative-fixnum tile-x tile-y))
+         (make-texture-region
+          :texture (tiled-tileset-texture tileset)
+          :region (raylib:make-rectangle
+                   :x (coerce tile-x 'single-float)
+                   :y (coerce tile-y 'single-float)
+                   :width (coerce tile-width 'single-float)
+                   :height (coerce tile-height 'single-float))))))))
 
 (deftype tiled-renderer ()
   `(function (&optional raylib:vector2 raylib:vector2 raylib:vector2 single-float raylib:color)))
