@@ -54,7 +54,7 @@
      (promise:with-promise (succeed)
        (raylib:play-music-stream music)
        (add-game-loop-hook
-        (lambda () (if (raylib:is-music-stream-playing music) t (progn (succeed) nil)))
+        (lambda () (if (raylib:is-music-stream-playing music) (progn (raylib:update-music-stream music) t) (progn (succeed) nil)))
         :after #'identity))))
   (:method ((stream raylib:audio-stream))
     (values
