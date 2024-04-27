@@ -131,7 +131,7 @@
 
 (define-scene2d-default-construct-form select-box-style (label-style entry-type))
 
-(defun select-box-promise-index (box &optional (initial-index 0) (post-handler (constantly nil)))
+(defun select-box-promise-index (box &optional (initial-index 0) (handler (constantly nil)))
   (let* ((entries (select-box-entries box))
          (initial-focused (nth initial-index entries))
          (manager (make-scene2d-focus-manager :focusables (cons initial-focused (remove initial-focused entries)))))
@@ -139,6 +139,7 @@
     (mapc #'select-box-entry-unfocus (remove initial-focused entries))
     (async
       (loop
+        (funcall handler manager)
         (let ((key (await (promise-pressed-key))))
           (case key
             ((:up :down :left :right)
@@ -146,7 +147,7 @@
              (scene2d-focus-manager-handle-key manager key))
             ((:a) (return (position (scene2d-focus-manager-focused manager) entries)))
             ((:b) (return nil)))
-          (when-let ((result (funcall post-handler manager key)))
+          (when-let ((result (funcall handler manager key)))
             (etypecase result
               ((eql t) (return nil))
               (non-negative-fixnum (return result))))
@@ -171,21 +172,24 @@
             (setf (select-box-entry-content entry) content)
         :finally (return box)))
 
-(defun swappable-select-box-promise-index (box &optional (initial-index 0) (post-handler (constantly nil)))
+(defun swappable-select-box-promise-index (box &optional (initial-index 0) (handler (constantly nil)))
   (let ((entries (select-box-entries box))
         (swap-entries (mapcar #'select-box-entry-content (select-box-entries box)))
         (swap-index nil))
     (let* ((promise (promise:make))
-           (handler (lambda (manager key)
-                      (case key
-                        (:select (let ((index (position (scene2d-focus-manager-focused manager) entries)))
-                                   (when swap-index
-                                     (select-box-entry-unfocus (nth swap-index swap-entries))
-                                     (promise:succeed promise (cons index swap-index)))
-                                   (setf swap-index (if (eql index swap-index) nil index))
-                                   (when swap-index
-                                     (select-box-entry-focus (nth swap-index swap-entries))))))
-                      (funcall post-handler manager key))))
+           (handler (lambda (manager &optional key)
+                      (if key
+                          (progn
+                            (case key
+                              (:select (let ((index (position (scene2d-focus-manager-focused manager) entries)))
+                                         (when swap-index
+                                           (select-box-entry-unfocus (nth swap-index swap-entries))
+                                           (promise:succeed promise (cons index swap-index)))
+                                         (setf swap-index (if (eql index swap-index) nil index))
+                                         (when swap-index
+                                           (select-box-entry-focus (nth swap-index swap-entries))))))
+                            (funcall handler manager key))
+                          (funcall handler manager)))))
       (async
         (loop
           (let ((index (await (aselect (select-box-promise-index box initial-index handler) promise)))) ; TODO: Handle the promise leaked here.

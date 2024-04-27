@@ -14,11 +14,15 @@
         (with-popped-window (region (:start :start))
           (when-let ((index (await (funcall promise-index select-box
                                             (or (and initial-selection-p (position initial-selection selections)) 0)
-                                            (lambda (manager key)
-                                              (declare (ignore key))
-                                              (scene2d-scroll-region-scroll-to-focusable
-                                               region (scene2d-focus-manager-focused manager))
-                                              nil)))))
+                                            (let ((initializedp nil))
+                                              (lambda (manager &optional key)
+                                                (unless key
+                                                  (let ((function (curry #'scene2d-scroll-region-scroll-to-focusable
+                                                                         region (scene2d-focus-manager-focused manager))))
+                                                    (if initializedp
+                                                        (funcall function)
+                                                        (add-game-loop-hook (curry #'add-game-loop-hook function :after nil) :before nil))
+                                                    (setf initializedp t)))))))))
             (funcall
              (ecase select-box-type
                (alist-table-select-box #'car)
