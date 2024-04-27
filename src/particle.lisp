@@ -68,6 +68,18 @@
     (raylib:%quaternion-from-axis-angle result axis (* ([] angle) value))
     result))
 
+(defun particle-3d-initialize-default (particle &optional position)
+  (clet ((particle (cthe (:pointer (:struct particle-3d)) (& particle))))
+    (if position
+        (csetf (-> particle position) ([] (cthe (:pointer (:struct raylib:vector3)) (& position))))
+        (raylib:%vector3-zero (& (-> particle position))))
+    (raylib:%vector3-zero (& (-> particle position-velocity)))
+    (raylib:%vector3-zero (& (-> particle position-acceleration)))
+    (raylib:%quaternion-identity (& (-> particle rotation)))
+    (raylib:%quaternion-identity (& (-> particle rotation-velocity)))
+    (raylib:%quaternion-identity (& (-> particle rotation-acceleration)))
+    (setf (-> particle age) 0.0 (-> particle lifetime) 1.0)))
+
 (defun particle-3d-update-motion (particle &optional (delta (locally (declare (special #1=particle-3d-delta-time)) #1#)))
   (clet ((particle (cthe (:pointer (:struct particle-3d)) (& particle)))
          (s (foreign-alloca '(:struct raylib:vector4))))

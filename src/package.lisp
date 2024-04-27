@@ -176,6 +176,8 @@
    #:particle-3d-age
    #:particle-3d-lifetime
    #:particle-3d-livep
+   #:particle-3d-initialize-default
+   #:particle-3d-update-motion
    #:particle-3d-emitter
    #:make-particle-3d-emitter
    #:particle-3d-emitter-update
