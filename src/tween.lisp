@@ -8,7 +8,8 @@
     (assert (not (ute:finishedp tween)))
     (assert (not (ute:killedp tween)))
     (setf (ute:callback tween) (conjoin #'succeed (ute:callback tween)))
-    (ute:start tween manager)))
+    (prog1 (ute:start tween manager)
+      (ute::base-tween-update tween 0.0))))
 
 (defmacro tween-iteration-in-place ((place sequence) &rest args &key (restore-place-p nil) &allow-other-keys)
   (remove-from-plistf args :restore-place-p)
