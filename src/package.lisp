@@ -34,6 +34,7 @@
    ;; tween.lisp
    #:promise-tween
    ;; input.lisp
+   #:*keyboard-key-mappings*
    #:key-keyboard
    #:keyboard-key
    #:key-pressed-p
