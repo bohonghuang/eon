@@ -60,7 +60,7 @@
                  (async
                    (loop :while (and *key-repeat-enabled-p* (key-down-p key))
                          :when (< (length *key-queue*) +key-queue-size-limit+)
-                           :do (push key *key-queue*)
+                           :do (nconcf *key-queue* (list key))
                          :do (await (promise-sleep (/ 5.0 60.0)))
                          :finally (setf *key-queue* nil)))
                  (key-up-p key)))
