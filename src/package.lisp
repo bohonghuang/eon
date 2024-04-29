@@ -138,6 +138,7 @@
    #:select-box-add-child
    #:select-box-children
    #:select-box-entry-content
+   #:select-box-entry-focused-p
    #:select-box-promise-index
    #:swappable-select-box
    #:swappable-select-box-promise-index

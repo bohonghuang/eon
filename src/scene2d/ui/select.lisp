@@ -8,9 +8,9 @@
 (defun (setf select-box-entry-content) (content entry)
   (setf (scene2d-focusable-content entry) content))
 
-(defgeneric select-box-entry-focus (entry))
+(defgeneric select-box-entry-focused-p (entry))
 
-(defgeneric select-box-entry-unfocus (entry))
+(defgeneric (setf select-box-entry-focused-p) (value entry))
 
 (defstruct select-box-border-entry-style
   (color (raylib:make-color :r 255 :g 97 :b 90 :a 255) :type raylib:color))
@@ -46,17 +46,11 @@
           (raylib:rectangle-width border) (+ (raylib:vector2-x size) (* 2.0 +select-box-border-entry-rectangle-padding+))
           (raylib:rectangle-height border) (+ (raylib:vector2-y size) (* 2.0 +select-box-border-entry-rectangle-padding+)))))
 
-(defun select-box-border-entry-focus (entry)
-  (setf (raylib:color-a (select-box-border-entry-style-color (select-box-border-entry-style entry))) 255)) ; TODO: Avoid modifying the style.
+(defmethod select-box-entry-focused-p ((entry select-box-border-entry))
+  (plusp (raylib:color-a (select-box-border-entry-style-color (select-box-border-entry-style entry)))))
 
-(defun select-box-border-entry-unfocus (entry)
-  (setf (raylib:color-a (select-box-border-entry-style-color (select-box-border-entry-style entry))) 0)) ; TODO: Avoid modifying the style.
-
-(defmethod select-box-entry-focus ((entry select-box-border-entry))
-  (select-box-border-entry-focus entry))
-
-(defmethod select-box-entry-unfocus ((entry select-box-border-entry))
-  (select-box-border-entry-unfocus entry))
+(defmethod (setf select-box-entry-focused-p) (value (entry select-box-border-entry))
+  (setf (raylib:color-a (select-box-border-entry-style-color (select-box-border-entry-style entry))) (if value 255 0))) ; TODO: Avoid modifying the style.
 
 (defstruct select-box-style
   (label-style (make-scene2d-label-style) :type scene2d-label-style)
@@ -135,15 +129,15 @@
   (let* ((entries (select-box-entries box))
          (initial-focused (nth initial-index entries))
          (manager (make-scene2d-focus-manager :focusables (cons initial-focused (remove initial-focused entries)))))
-    (select-box-entry-focus initial-focused)
-    (mapc #'select-box-entry-unfocus (remove initial-focused entries))
+    (setf (select-box-entry-focused-p initial-focused) t)
+    (mapc (curry #'(setf select-box-entry-focused-p) nil) (remove initial-focused entries))
     (async
       (loop
         (funcall handler manager)
         (let ((key (await (promise-pressed-key))))
           (case key
             ((:up :down :left :right)
-             (select-box-entry-unfocus (scene2d-focus-manager-focused manager))
+             (setf (select-box-entry-focused-p (scene2d-focus-manager-focused manager)) nil)
              (scene2d-focus-manager-handle-key manager key))
             ((:a) (return (position (scene2d-focus-manager-focused manager) entries)))
             ((:b) (return nil)))
@@ -151,7 +145,7 @@
             (etypecase result
               ((eql t) (return nil))
               (non-negative-fixnum (return result))))
-          (select-box-entry-focus (scene2d-focus-manager-focused manager)))))))
+          (setf (select-box-entry-focused-p (scene2d-focus-manager-focused manager)) t))))))
 
 (defstruct (table-select-box (:include select-box))
   (table (make-scene2d-table) :type scene2d-table))
@@ -168,8 +162,8 @@
   (loop :with constructor := (select-box-style-entry-type (select-box-style box))
         :for entry :in (select-box-entries box)
         :for content := (funcall constructor (select-box-entry-content entry))
-        :do (select-box-entry-unfocus content)
-            (setf (select-box-entry-content entry) content)
+        :do (setf (select-box-entry-focused-p content) nil
+                  (select-box-entry-content entry) content)
         :finally (return box)))
 
 (defun swappable-select-box-promise-index (box &optional (initial-index 0) (handler (constantly nil)))
@@ -183,11 +177,11 @@
                             (case key
                               (:select (let ((index (position (scene2d-focus-manager-focused manager) entries)))
                                          (when swap-index
-                                           (select-box-entry-unfocus (nth swap-index swap-entries))
+                                           (setf (select-box-entry-focused-p (nth swap-index swap-entries)) nil)
                                            (promise:succeed promise (cons index swap-index)))
                                          (setf swap-index (if (eql index swap-index) nil index))
                                          (when swap-index
-                                           (select-box-entry-focus (nth swap-index swap-entries))))))
+                                           (setf (select-box-entry-focused-p (nth swap-index swap-entries)) t)))))
                             (funcall handler manager key))
                           (funcall handler manager)))))
       (async
@@ -196,7 +190,7 @@
             (when (consp index)
               (return index))
             (when swap-index
-              (select-box-entry-unfocus (nth swap-index swap-entries)))
+              (setf (select-box-entry-focused-p (nth swap-index swap-entries)) nil))
             (if index
                 (if swap-index
                     (if (= index swap-index)
@@ -207,27 +201,25 @@
                     (setf swap-index nil)
                     (return nil)))
             (when swap-index
-              (select-box-entry-focus (nth swap-index swap-entries)))))))))
+              (setf (select-box-entry-focused-p (nth swap-index swap-entries)) t))))))))
 
 (defstruct (select-box-transparent-entry (:include scene2d-focusable)))
 
 (defun select-box-transparent-entry (content)
   (make-select-box-transparent-entry :content content))
 
-(defmethod select-box-entry-focus ((entry select-box-transparent-entry))
-  (select-box-entry-focus (select-box-transparent-entry-content entry)))
+(defmethod select-box-entry-focused-p ((entry select-box-transparent-entry))
+  (select-box-entry-focused-p (select-box-transparent-entry-content entry)))
 
-(defmethod select-box-entry-unfocus ((entry select-box-transparent-entry))
-  (select-box-entry-unfocus (select-box-transparent-entry-content entry)))
+(defmethod (setf select-box-entry-focused-p) (value (entry select-box-transparent-entry))
+  (setf (select-box-entry-focused-p (select-box-transparent-entry-content entry)) value))
 
-(defmethod select-box-entry-focus ((constructed scene2d-constructed))
+(defmethod select-box-entry-focused-p ((constructed scene2d-constructed))
+  (when-let ((background-focused (gethash :background-focused (scene2d-constructed-metadata constructed))))
+    (plusp (raylib:color-a (scene2d-color background-focused)))))
+
+(defmethod (setf select-box-entry-focused-p) (value (constructed scene2d-constructed))
   (when-let ((background-focused (gethash :background-focused (scene2d-constructed-metadata constructed)))
              (background-unfocused (or (gethash :background (scene2d-constructed-metadata constructed))
                                        (gethash :background-unfocused (scene2d-constructed-metadata constructed)))))
-    (setf (raylib:color-a (scene2d-color background-focused)) 255 (raylib:color-a (scene2d-color background-unfocused)) 0)))
-
-(defmethod select-box-entry-unfocus ((constructed scene2d-constructed))
-  (when-let ((background-focused (gethash :background-focused (scene2d-constructed-metadata constructed)))
-             (background-unfocused (or (gethash :background (scene2d-constructed-metadata constructed))
-                                       (gethash :background-unfocused (scene2d-constructed-metadata constructed)))))
-    (setf (raylib:color-a (scene2d-color background-focused)) 0 (raylib:color-a (scene2d-color background-unfocused)) 255)))
+    (setf (raylib:color-a (scene2d-color background-focused)) (if value 255 0) (raylib:color-a (scene2d-color background-unfocused)) (if value 0 255))))
