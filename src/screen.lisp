@@ -90,7 +90,6 @@
 
 (defmethod ensure-screen-transition ((transition shader-screen-transition))
   (let ((shader (shader-screen-transition-shader transition)))
-    (initialize-shaderable-uniforms transition)
     (values
      (lambda (screen-manager)
        (with-screen-manager-mode screen-manager

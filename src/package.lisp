@@ -238,7 +238,6 @@
    #:scene3d-particle-emitter-burst
    ;; shader.lisp
    #:define-shaderable-uniforms
-   #:initialize-shaderable-uniforms
    #:update-shaderable-uniforms
    ;; tiled.lisp
    #:*tiled-renderer-camera*
