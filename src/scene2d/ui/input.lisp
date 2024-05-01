@@ -1,6 +1,7 @@
 (in-package #:eon)
 
-(defstruct (input-field (:include scene2d-box)))
+(defstruct (input-field (:include scene2d-box))
+  "A SCENE2D-NODE used to accept user keyboard input and display it.")
 
 (defstruct input-field-style
   (label-style (make-scene2d-label-style) :type scene2d-label-style))
@@ -12,9 +13,11 @@
   (second (scene2d-box-children field)))
 
 (defun input-field-text (field)
+  "Get the text string of FIELD."
   (scene2d-label-string (input-field-label field)))
 
 (defun (setf input-field-text) (text field)
+  "Set the text string of FIELD."
   (setf (scene2d-label-string (input-field-label field)) text))
 
 (defmethod scene2d-draw ((field input-field) position origin scale rotation tint)
@@ -34,6 +37,7 @@
 (define-scene2d-default-construct-form input-field-style ())
 
 (defun input-field-promise-line (field)
+  "Allow the user to input content in FIELD, and the text string in FIELD will be returned as a PROMISE:PROMISE. The PROMISE:PROMISE will be fulfilled when the user presses the Enter key to indicate the completion of input."
   (let ((label (input-field-label field)))
     (async
       (loop

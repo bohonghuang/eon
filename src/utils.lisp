@@ -12,9 +12,11 @@
 
 (declaim (inline integer-float))
 (defun integer-float (integer)
+  "Convert INTEGER to a SINGLE-FLOAT."
   (coerce integer 'single-float))
 
 (define-setf-expander integer-float (integer &environment env)
+  "Truncate a SINGLE-FLOAT into INTEGER."
   (multiple-value-bind (vars vals newval setter getter) (get-setf-expansion integer env)
     (declare (ignore newval setter))
     (with-gensyms (store)
@@ -22,6 +24,7 @@
 
 (declaim (inline array-vector))
 (defun array-vector (array)
+  "Flatten ARRAY into a VECTOR."
   (loop :with size := (array-total-size array)
         :with vector := (make-array size :element-type (array-element-type array))
         :for i :below size

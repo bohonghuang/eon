@@ -3,6 +3,7 @@
 (setf (assoc-value *game-special-bindings* 'ute:*tween-manager*) '(ute:make-tween-manager))
 
 (defun promise-tween (tween &optional (manager ute:*tween-manager*))
+  "Start TWEEN by MANAGER, return a PROMISE:PROMISE which will be fulfilled when TWEEN is finished."
   (promise:with-promise (succeed)
     (assert (not (ute:startedp tween)))
     (assert (not (ute:finishedp tween)))

@@ -1,8 +1,24 @@
 (in-package #:eon)
 
-(defgeneric update-shaderable-uniforms (object))
+(defgeneric update-shaderable-uniforms (object)
+  (:documentation "Update the shader uniforms for OBJECT after calling RAYLIB:BEGIN-SHADER on its shader."))
 
 (defmacro define-shaderable-uniforms (name &body slots)
+  "Define a shader uniform structure for type NAME, whose following DEFSTRUCT-style slot readers are expected to exist:
+- SHADER: The shader of the shader uniforms being defined.
+- SHADER-UNIFORMS: The shader uniform structure being defined.
+
+The syntax for defining SLOTS is similar to DEFSTRUCT, but each slot can only be one of the following types:
+- SINGLE-FLOAT
+- (SIGNED-BYTE 32)
+- (UNSIGNED-BYTE 32)
+- BOOLEAN
+- RAYLIB:VECTOR2
+- RAYLIB:VECTOR3
+- RAYLIB:VECTOR4
+- RAYLIB:COLOR
+- RAYLIB:TEXTURE
+- RAYLIB:MATRIX"
   (let* ((struct-name (symbolicate name '#:-shader-uniforms))
          (constructor-name (symbolicate '#:make- struct-name))
          (internal-constructor-name (symbolicate '#:%make- struct-name))

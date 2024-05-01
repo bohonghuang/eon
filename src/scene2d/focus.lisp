@@ -1,6 +1,7 @@
 (in-package #:eon)
 
 (defstruct (scene2d-focusable (:include scene2d-container))
+  "A SCENE2D-CONTAINER that contains a FOCUS-POINT (world coordinate of its child node) used in SCENE2D-FOCUS-MANAGER."
   (focus-point (raylib:make-vector2)))
 
 (defmethod scene2d-draw ((focusable scene2d-focusable) position origin scale rotation tint)
@@ -12,12 +13,15 @@
     (call-next-method)))
 
 (defstruct scene2d-focus-manager
+  "A structure that contains a list of SCENE2D-FOCUSABLEs."
   (focusables nil :type list))
 
 (defun scene2d-focus-manager-focused (manager)
+  "Get the currently focused SCENE2D-FOCUSABLE."
   (first (scene2d-focus-manager-focusables manager)))
 
 (defun scene2d-focus-manager-handle-key (manager key)
+  "Make the MANAGER change the currently focused SCENE2D-FOCUSABLE based on the KEY (which can be :LEFT, :RIGHT, :UP, or :DOWN)."
   (with-accessors ((focusables scene2d-focus-manager-focusables))
       manager
     (let* ((focused (first focusables))

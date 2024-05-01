@@ -5,7 +5,8 @@
 (defmacro with-tiled-tileset-texture-table (&body body)
   `(let ((*tiled-tileset-texture-table* (or *tiled-tileset-texture-table* (make-hash-table)))) . ,body))
 
-(defvar *tiled-renderer-camera* nil)
+(defvar *tiled-renderer-camera* nil
+  "A variable that needs to be bound to a CAMERA-2D when creating a TILED-RENDERER if optimization of rendering performance is required based on the camera's view.")
 
 (defun tiled-tileset-texture (tileset)
   (let ((table (or *tiled-tileset-texture-table* (make-hash-table)))
@@ -35,6 +36,7 @@
                    :height (coerce tile-height 'single-float))))))))
 
 (deftype tiled-renderer ()
+  "A function that accepts the same drawing parameters as SCENE2D-DRAW, used to draw a map or one of its layers."
   `(function (&optional raylib:vector2 raylib:vector2 raylib:vector2 single-float raylib:color)))
 
 (declaim (ftype (function (list) (values tiled-renderer)) tiled-compose-renderers))
@@ -47,6 +49,7 @@
 
 (declaim (ftype (function (tiled:layer) (values tiled-renderer)) tiled-layer-renderer))
 (defun tiled-layer-renderer (layer)
+  "Create a TILED-RENDERER for LAYER of type CL-TILED:LAYER and return it."
   (with-tiled-tileset-texture-table
     (typecase layer
       (tiled:group-layer
@@ -164,6 +167,7 @@
 
 (declaim (ftype (function (tiled:tiled-map) (values tiled-renderer list)) tiled-map-renderer))
 (defun tiled-map-renderer (map)
+  "Create a TILED-RENDERER for MAP of type CL-TILED:TILED-MAP and return it."
   (with-tiled-tileset-texture-table
     (let* ((layers (tiled:map-layers map))
            (renderers (mapcar #'tiled-layer-renderer layers)))

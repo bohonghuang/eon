@@ -24,17 +24,23 @@
 
 (defstruct viewport)
 
-(defgeneric begin-viewport (viewport))
+(defgeneric begin-viewport (viewport)
+  (:documentation "Begin rendering the content of VIEWPORT."))
 
-(defgeneric end-viewport (viewport))
+(defgeneric end-viewport (viewport)
+  (:documentation "End rendering the content of VIEWPORT."))
 
-(defgeneric draw-viewport (viewport))
+(defgeneric draw-viewport (viewport)
+  (:documentation "Draw the content of VIEWPORT onto current render target."))
 
-(defgeneric viewport-width (viewport))
+(defgeneric viewport-width (viewport)
+  (:documentation "Get the width of VIEWPORT's world."))
 
-(defgeneric viewport-height (viewport))
+(defgeneric viewport-height (viewport)
+  (:documentation "Get the height of VIEWPORT's world."))
 
 (defmacro with-viewport (viewport &body body)
+  "Evaluate BODY with the render target directed to VIEWPORT."
   (with-gensyms (viewport-var)
     `(let ((,viewport-var ,viewport))
        (begin-viewport ,viewport-var)
@@ -42,7 +48,8 @@
          (end-viewport ,viewport-var))
        (draw-viewport ,viewport-var))))
 
-(defstruct (screen-viewport (:include viewport)))
+(defstruct (screen-viewport (:include viewport))
+  "A viewport making the world size equal to the screen size.")
 
 (define-viewport-methods screen-viewport
   (:begin (viewport) (declare (ignore viewport)))
@@ -53,6 +60,7 @@
 
 (defstruct (world-viewport (:include viewport)
                            (:constructor nil))
+  "A viewport with a world size different from the screen size."
   render-texture)
 
 (defun world-viewport-initialize (viewport width height)
@@ -77,7 +85,8 @@
         (-> render-texture raylib:texture raylib:height)))))
 
 (defstruct (stretch-viewport (:include world-viewport)
-                             (:constructor %make-stretch-viewport)))
+                             (:constructor %make-stretch-viewport))
+  "A WORLD-VIEWPORT that scales the world to take the whole screen.")
 
 (defun make-stretch-viewport (&key (width +world-viewport-default-width+) (height +world-viewport-default-height+))
   (world-viewport-initialize (%make-stretch-viewport) width height))
@@ -110,7 +119,8 @@
   (:height (viewport) (world-viewport-height viewport)))
 
 (defstruct (fit-viewport (:include world-viewport)
-                         (:constructor %make-fit-viewport)))
+                         (:constructor %make-fit-viewport))
+  "A WORLD-VIEWPORT that scales the world up to fit the screen with aspect ratio kept.")
 
 (defun make-fit-viewport (&key (width +world-viewport-default-width+) (height +world-viewport-default-height+))
   (world-viewport-initialize (%make-fit-viewport) width height))

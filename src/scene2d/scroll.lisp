@@ -28,6 +28,7 @@
        (scene2d-scissor-p (scene2d-focusable-content instance))))
 
 (deftype scene2d-scroll-region ()
+  "A SCENE2D-CONTAINER with a specified size that allows its child nodes to move within it without displaying content beyond its boundaries."
   '(and scene2d-focusable (satisfies scene2d-scroll-region-p)))
 
 (defun make-scene2d-scroll-region (&rest args &key child size &allow-other-keys)
@@ -38,6 +39,7 @@
   (scene2d-scissor-content (scene2d-focusable-content region)))
 
 (defun scene2d-scroll-region-scroll-to-focusable (region focusable)
+  "Scroll the content within the REGION to make the content of FOCUSABLE visible within the visible range of the REGION."
   (let ((position (scene2d-node-position (scene2d-scroll-region-child region)))
         (offset (scene2d-scroll-offset region focusable)))
     (raylib:%vector2-add (& position) (& position) (& offset))))
@@ -47,6 +49,7 @@
   `(make-scene2d-scroll-region . ,args))
 
 (defun scene2d-box-scroll-region (box &optional (cells 8))
+  "Build a SCENE2D-SCROLL-REGION containing BOX. Only CELLS of its children can be displayed at a time."
   (scene2d-layout box)
   (make-scene2d-scroll-region :child box
                               :size (ecase (scene2d-box-orientation box)
@@ -56,12 +59,15 @@
                                                                                :summing (raylib:vector2-y (scene2d-cell-size cell)) :of-type single-float))))))
 
 (defstruct scene2d-tile-scroll-style
+  "An structure defining the style of SCENE2D-TILE-SCROLL. ENSURE-SCENE2D-NODE is called on the tile repeatly until the SCENE2D-TILE-SCROLL is filled."
   (tile (load-asset 'raylib:texture +scene2d-window-default-background-texture+ :format :png)))
 
 (defstruct (scene2d-tile-scroll (:include scene2d-layout))
+  "A SCENE2D-NODE fills itself with tiles to match its size. When its offset changes, as long as the changes are continuous regardless of the value, the tiles smoothly scroll within the region."
   (style (make-scene2d-tile-scroll-style) :type scene2d-tile-scroll-style))
 
 (defun scene2d-tile-scroll-offset (scroll)
+  "Get the offset of SCROLL."
   (scene2d-table-position (scene2d-tile-scroll-content scroll)))
 
 (defmethod scene2d-layout ((scroll scene2d-tile-scroll))
@@ -109,9 +115,11 @@
        (scene2d-tile-scroll-p (scene2d-scissor-content instance))))
 
 (deftype scene2d-tile-scroll-region ()
+  "Like SCENE2D-TILE-SCROLL, but clip the content of tiles beyond its bound."
   '(and scene2d-scissor (satisfies scene2d-tile-scroll-region-p)))
 
 (defstruct scene2d-tile-scroll-region-style
+  "A structure representing the style of SCENE2D-TILE-SCROLL-REGION."
   (tile-scroll-style (make-scene2d-tile-scroll-style) :type scene2d-tile-scroll-style))
 
 (defun make-scene2d-tile-scroll-region (&rest args
@@ -126,4 +134,5 @@
                                 :size size args))
 
 (defun scene2d-tile-scroll-region-offset (region)
+  "Get the offset of REGION."
   (scene2d-tile-scroll-offset (scene2d-scissor-content region)))
