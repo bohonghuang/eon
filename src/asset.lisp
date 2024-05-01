@@ -16,11 +16,14 @@
 
 (defvar *asset-manager* nil)
 
-(defgeneric load-asset (asset-type source &key &allow-other-keys))
+(defgeneric load-asset (asset-type source &key &allow-other-keys)
+  (:documentation "Load an asset of ASSET-TYPE from SOURCE."))
 
-(defgeneric unload-asset (asset))
+(defgeneric unload-asset (asset)
+  (:documentation "Unload ASSET to release the associated resources. After calling, it must be ensured that the ASSET is no longer being used or repeatedly unloaded. Typically, this function does not need to be manually called, as reusable resources can ensure they are loaded once only, while non-reusable resources can be managed by the GC, even though manually unloading them can help reduce GC pause time."))
 
 (defun asset-loaded-p (asset &aux (asset-type (type-of asset)))
+  "Return non-NIL if ASSET has already been loaded."
   (with-accessors ((type-table asset-manager-type-table)) *asset-manager*
     (with-accessors ((data-info asset-type-data-info))
         (or (gethash asset-type type-table) (return-from asset-loaded-p nil))

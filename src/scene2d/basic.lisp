@@ -10,7 +10,8 @@
 (defgeneric scene2d-draw (drawable position origin scale rotation tint)
   (:method ((list list) position origin scale rotation tint)
     (loop :for drawable :in list
-          :do (scene2d-draw drawable position origin scale rotation tint))))
+          :do (scene2d-draw drawable position origin scale rotation tint)))
+  (:documentation "Draw drawable at POSITION in the 2D scene, scaled by SCALE and rotated by ROTATION at ORIGIN, using color TINT."))
 
 (defun scene2d-draw-simple (drawable
                             &key
@@ -19,6 +20,7 @@
                               (rotation 0.0)
                               (scale +vector2-ones+)
                               (tint raylib:+white+))
+  "Like SCENE2D-DRAW, but allow selectively providing drawing parameters, with default values used for parameters not provided."
   (scene2d-draw drawable position origin scale rotation tint))
 
 (declaim (inline %scene2d-draw-texture))
@@ -125,14 +127,17 @@
     (%scene2d-draw-font (& (text-style-font style)) (text-string text) (text-style-size style) (text-style-spacing style)
                         (& position) (& origin) (& scale) rotation (& tint))))
 
-(defgeneric scene2d-size (node))
+(defgeneric scene2d-size (node)
+  (:documentation "Get the size of a 2D scene node (excluding its own scaling)."))
 
 (defgeneric (setf scene2d-size) (value node)
-  (:method (value node) (declare (ignore value node))))
+  (:method (value node) (declare (ignore value node)))
+  (:documentation "Set the size of a 2D scene node."))
 
 (defgeneric scene2d-layout (layout)
   (:method (layout) (declare (ignore layout)))
-  (:method ((list list)) (loop :for layout :in list :do (scene2d-layout layout))))
+  (:method ((list list)) (loop :for layout :in list :do (scene2d-layout layout)))
+  (:documentation "Layout a 2D scene node and its child nodes."))
 
 (defmethod scene2d-size ((texture raylib:texture))
   (raylib:make-vector2 :x (coerce (raylib:texture-width texture) 'single-float)
@@ -153,6 +158,7 @@
     (raylib:measure-text-ex (text-style-font style) (text-string text) (text-style-size style) (text-style-spacing style))))
 
 (defstruct (scene2d-node (:constructor nil))
+  "The base class of 2D scene nodes."
   (position (raylib:make-vector2 :x 0.0 :y 0.0) :type raylib:vector2 :read-only t)
   (origin (raylib:make-vector2 :x 0.0 :y 0.0) :type raylib:vector2 :read-only t)
   (scale (raylib:make-vector2 :x 1.0 :y 1.0) :type raylib:vector2 :read-only t)
@@ -183,7 +189,8 @@
     (raylib:copy-vector2 scale (scene2d-node-scale node))
     (raylib:copy-color color (scene2d-node-color node))
     (setf (scene2d-node-rotation node) rotation)
-    node))
+    node)
+  (:documentation "Return OBJECT as a SCENE2D-NODE using the construction arguments ARGS."))
 
 (defmethod scene2d-size ((list list))
   (loop :with position := (raylib:make-vector2)
@@ -195,6 +202,7 @@
         :finally (return size)))
 
 (defstruct (scene2d-container (:include scene2d-node))
+  "A SCENE2D-NODE that can contain other drawables as its children."
   (content nil))
 
 (defmethod scene2d-layout ((container scene2d-container))
@@ -269,10 +277,12 @@
     (call-next-method container position origin scale rotation tint)))
 
 (defstruct scene2d-alignment
+  "A structure defining the 2D alignment of a SCENE2D-NODE."
   (vertical :center :type (member :start :center :end))
   (horizontal :center :type (member :start :center :end)))
 
 (defstruct (scene2d-layout (:include scene2d-container))
+  "A SCENE2D-NODE that serves as the base class for all layouts and contains a size field independent of its child nodes."
   (size (raylib:make-vector2 :x 0.0 :y 0.0) :type raylib:vector2 :read-only t))
 
 (defmethod scene2d-size ((layout scene2d-layout))
@@ -282,6 +292,7 @@
   (raylib:copy-vector2 value (scene2d-layout-size layout)))
 
 (defstruct (scene2d-cell (:include scene2d-layout))
+  "A SCENE2D-LAYOUT with a specified size, where its child node can be aligned with it using the specified alignment."
   (alignment (make-scene2d-alignment) :type scene2d-alignment))
 
 (defmacro subst-swap (tree &body pairs)
@@ -312,6 +323,7 @@
 
 (defstruct (scene2d-margin (:include scene2d-container)
                            (:constructor %make-scene2d-margin))
+  "A SCENE2D-LAYOUT that provides margins around its child node."
   (lower (raylib:make-vector2 :x 0.0 :y 0.0) :read-only t)
   (upper (raylib:make-vector2 :x 0.0 :y 0.0) :read-only t))
 
@@ -339,6 +351,7 @@
     (scene2d-margin-upper margin))))
 
 (defstruct (scene2d-box (:include scene2d-layout))
+  "A SCENE2D-LAYOUT that can arrange its child nodes in a specified orientation, with all child nodes aligned in the center by default in another orientation."
   (orientation :vertical :type (member :vertical :horizontal)))
 
 (defmethod scene2d-layout ((box scene2d-box))
@@ -368,22 +381,27 @@
            :finally (setf (raylib:vector2-y (scene2d-box-size box)) height)))))
 
 (defun scene2d-box-children (box)
+  "Get the children of BOX."
   (mapcar #'scene2d-cell-content (scene2d-box-content box)))
 
 (defun scene2d-box-add-child (box child)
+  "Add CHILD to BOX as its last child."
   (let ((cell (make-scene2d-cell :content child)))
     (nconcf (scene2d-box-content box) (list cell))
     cell))
 
 (defun (setf scene2d-box-children) (children box)
+  "Set the children of BOX."
   (setf (scene2d-box-content box) nil)
   (mapc (curry #'scene2d-box-add-child box) children))
 
 (defun scene2d-box-remove-child (box child)
+  "Remove CHILD from BOX."
   (when-let ((cell (find child (scene2d-box-content box) :key #'scene2d-cell-content)))
     (deletef (scene2d-box-content box) cell)))
 
-(defstruct (scene2d-nine-patch (:include scene2d-layout)))
+(defstruct (scene2d-nine-patch (:include scene2d-layout))
+  "A SCENE2D-NODE for an N-PATCH.")
 
 (defmethod ensure-scene2d-node ((nine-patch n-patch) &rest args)
   (apply #'make-scene2d-nine-patch :content nine-patch args))
@@ -427,23 +445,29 @@
 (defstruct scene2d-window-style
   (background (scene2d-window-default-background)))
 
-(defstruct (scene2d-window (:include scene2d-container)))
+(defstruct (scene2d-window (:include scene2d-container))
+  "A SCENE2D-CONTAINER that adjusts its background size during layout to accommodate its child.")
 
 (defun scene2d-window-child (window)
+  "Get the child of WINDOW."
   (second (scene2d-window-content window)))
 
 (defun (setf scene2d-window-child) (child window)
+  "Set the child of WINDOW."
   (setf (second (scene2d-window-content window)) child))
 
 (defun scene2d-window-background (window)
+  "Get the background of WINDOW."
   (first (scene2d-window-content window)))
 
 (defun (setf scene2d-window-background) (background window)
+  "Set the background of WINDOW."
   (setf (first (scene2d-window-content window)) background))
 
 (defgeneric scene2d-window-layout (child background)
   (:method (child background)
-    (setf (scene2d-size background) (scene2d-size child))))
+    (setf (scene2d-size background) (scene2d-size child)))
+  (:documentation "Layout BACKGROUND fit the content of CHILD."))
 
 (defmethod scene2d-layout ((window scene2d-window))
   (scene2d-layout (scene2d-window-child window))
@@ -468,9 +492,11 @@
           (coerce (raylib:n-patch-info-top (n-patch-info nine-patch)) 'single-float))))
 
 (defstruct (scene2d-flow-box (:include scene2d-box))
+  "A SCENE2D-LAYOUT that fixes its size in one dimension, fill a portion of its children based on that dimension, and then arrange the remaining children by increasing the size in another dimension, repeating this process."
   (alignment (make-scene2d-alignment) :type scene2d-alignment))
 
 (defun scene2d-flow-box-children (box)
+  "Get the children of BOX."
   (mapcan #'scene2d-box-children (scene2d-box-children box)))
 
 (defun scene2d-flow-box-make-box (box)
@@ -481,6 +507,7 @@
     new-box))
 
 (defun scene2d-flow-box-add-child (box child)
+  "Add CHILD to BOX as its last child."
   (scene2d-box-add-child (or (lastcar (scene2d-box-children box))
                              (scene2d-flow-box-make-box box))
                          child))
@@ -512,7 +539,8 @@
                                     (scene2d-flow-box-alignment box))))))
   (call-next-method))
 
-(defstruct (scene2d-coordinate-truncator (:include scene2d-container)))
+(defstruct (scene2d-coordinate-truncator (:include scene2d-container))
+  "A SCENE2D-CONTAINER that ensure the world coordinate values of its child node are always integers.")
 
 (defmethod scene2d-draw ((truncator scene2d-coordinate-truncator) position origin scale rotation tint)
   (declare (ignore origin rotation scale tint))
@@ -521,22 +549,26 @@
   (call-next-method))
 
 (defstruct scene2d-label-style
+  "A structure used to describe the style of a SCENE2D-LABEL, including text style, text color, outline color, and shadow color."
   (text-style (make-text-style) :type text-style)
   (color (raylib:make-color :r 74 :g 73 :b 74 :a 255) :type raylib:color)
   (shadow (raylib:make-color :r 214 :g 215 :b 206 :a 255) :type (or raylib:color null))
   (outline nil :type (or raylib:color null)))
 
 (defstruct (scene2d-label (:include scene2d-coordinate-truncator))
+  "A SCENE2D-NODE capable of displaying specified text using a specific style."
   (style (make-scene2d-label-style) :type scene2d-label-style))
 
 (defmethod ensure-scene2d-node ((text text) &rest args)
   (apply #'make-scene2d-label :content text args))
 
 (defun scene2d-label-string (label)
+  "Get the text string of LABEL."
   (if-let ((text (scene2d-label-content label)))
     (text-string text) ""))
 
 (defun (setf scene2d-label-string) (text label)
+  "Set the text string of LABEL."
   (if (scene2d-label-content label)
       (setf (text-string (scene2d-label-content label)) text)
       (setf (scene2d-label-content label) (make-text :string text :style (scene2d-label-style-text-style (scene2d-label-style label))))))
@@ -572,7 +604,8 @@
             (%scene2d-draw-font (& (text-style-font style)) text-string (text-style-size style) (text-style-spacing style)
                                 (& position) (& origin) (& scale) rotation color)))))))
 
-(defstruct (scene2d-scissor (:include scene2d-layout)))
+(defstruct (scene2d-scissor (:include scene2d-layout))
+  "A SCENE2D-LAYOUT capable of clipping the content of its child node beyond its bound.")
 
 (defmethod scene2d-draw ((scissor scene2d-scissor) position origin scale rotation tint)
   (raylib:with-scissor-mode ((floor (raylib:vector2-x position))
@@ -581,7 +614,8 @@
                              (floor (raylib:vector2-y (scene2d-scissor-size scissor))))
     (call-next-method)))
 
-(defstruct (scene2d-image (:include scene2d-container)))
+(defstruct (scene2d-image (:include scene2d-container))
+  "A SCENE2D-NODE used for displaying image (TEXTURE-REGION).")
 
 (defmethod ensure-scene2d-node ((texture-region texture-region) &rest args)
   (apply #'make-scene2d-image :content texture-region args))
@@ -598,27 +632,32 @@
                                      (repeat nil)
                                      (interval 0.0 interval-p)
                                      (restore-frame-p nil))
+  "Return a TWEEN that sets the FRAMES as the content of IMAGE sequentially at INTERVAL or within DURATION, repeating this process REPEAT times. If RESTORE-FRAME-P is non-NIL, restore the original content of IMAGE after this process ends."
   (declare (type single-float duration interval))
   (tween-iteration-in-place
       ((scene2d-image-content image) frames)
       :duration (if interval-p (* interval (length frames)) duration)
-      :repeat (:count (if repeat repeat 0))
+      :repeat (:count (or repeat 0))
       :ease #'ute:linear-inout
       :restore-place-p restore-frame-p))
 
 (defstruct (scene2d-group (:include scene2d-container)
-                          (:constructor %make-scene2d-group)))
+                          (:constructor %make-scene2d-group))
+  "A SCENE2D-CONTAINER that can accommodate multiple child nodes, with its size determined by the boundary formed by its child nodes. The child nodes will be rendered sequentially, and the last child node will be rendered on top.")
 
 (defun make-scene2d-group (&rest args)
   (apply #'%make-scene2d-group :content (make-scene2d-container) args))
 
 (defun scene2d-group-children (group)
+  "Get the children of GROUP."
   (scene2d-container-content (scene2d-group-content group)))
 
 (defun scene2d-group-add-child (group child)
+  "Add CHILD to GROUP."
   (nconcf (scene2d-container-content (scene2d-group-content group)) (list child)))
 
 (defun scene2d-group-remove-child (group child &key (from-end nil) (test #'eq) (key #'identity))
+  "Remove CHILD from GROUP."
   (deletef (scene2d-container-content (scene2d-group-content group)) child :from-end from-end :test test :key key))
 
 (defmethod scene2d-size ((group scene2d-group))
@@ -637,10 +676,12 @@
    (& (scene2d-size (scene2d-group-content group)))))
 
 (defstruct scene2d-dimensions
+  "A structure representing the dimensions of a specific SCENE2D-NODE."
   (rows 2 :type fixnum)
   (columns 1 :type fixnum))
 
-(defstruct (scene2d-max-cell (:include scene2d-cell)))
+(defstruct (scene2d-max-cell (:include scene2d-cell))
+  "A SCENE2D-LAYOUT that behaves like a SCENE2D-CELL when its specified size is larger than its child; otherwise, behaves like a SCENE2D-CONTAINER, allowing the child's size to determine its own size.")
 
 (defmethod scene2d-size ((cell scene2d-max-cell))
   (raylib:vector2-clamp
@@ -649,11 +690,14 @@
    +vector2-max+))
 
 (defstruct (scene2d-table-cell (:include scene2d-max-cell))
+  "A SCENE2D-MAX-CELL used internally within a SCENE2D-TABLE."
   (span 1 :type positive-fixnum))
 
-(defstruct (scene2d-table (:include scene2d-box)))
+(defstruct (scene2d-table (:include scene2d-box))
+  "A SCENE2D-LAYOUT capable of maintaining alignment of its children in rows and columns (defaulting to center alignment).")
 
 (defun scene2d-table-newline (table)
+  "Create a new line for TABLE to place children. Note that the meaning of \"line\" here refers to either a row or a column, depending on the orientation of the TABLE."
   (let* ((box (make-scene2d-box :orientation (ecase (scene2d-table-orientation table)
                                                (:vertical :horizontal)
                                                (:horizontal :vertical))))
@@ -662,11 +706,13 @@
     cell))
 
 (defun scene2d-table-add-child (table child)
+  "Add CHILD to the current line of TABLE."
   (let ((box (lastcar (scene2d-box-children table)))
         (cell (make-scene2d-table-cell :content child)))
     (scene2d-box-add-child box cell) cell))
 
 (defun scene2d-table-children (table)
+  "Return the children of TABLE as a list of lists."
   (mapcar (lambda (line)
             (mapcar #'scene2d-table-cell-content (scene2d-box-children line)))
           (scene2d-box-children table)))
@@ -731,6 +777,7 @@
      (call-next-method))))
 
 (defstruct (scene2d-shaderable-container (:include scene2d-container))
+  "A SCENE2D-CONTAINER containing a shader that is applied when rendering its child node."
   (shader nil :type raylib:shader))
 
 (defmethod scene2d-draw ((container scene2d-shaderable-container) position origin scale rotation tint)
@@ -739,6 +786,7 @@
 
 (defstruct (scene2d-canvas (:include scene2d-image)
                            (:constructor %make-scene2d-canvas))
+  "A SCENE2D-IMAGE used for rendering anything rendered in another rendering stage, often used for implementing post-processing effects or rendering 3D scenes within a 2D scene."
   (renderer #'values :type function :read-only t))
 
 (defvar *scene2d-canvas-renderers* nil)
@@ -756,6 +804,7 @@
            (add-game-loop-hook #'scene2d-canvas-render-all :before t) ,renderers)))
 
 (defun make-scene2d-canvas (&rest args &key size renderer &allow-other-keys)
+  "Create a SCENE2D-CANVAS with SIZE, and use RENDERER to draw its contents. The remaining parameters ARGS are used for constructing SCENE2D-NODE."
   (declare (type raylib:vector2 size)
            (type function renderer))
   (remove-from-plistf args :size)
@@ -779,6 +828,7 @@
   (call-next-method))
 
 (defstruct (scene2d-tween-container (:include scene2d-container))
+  "A SCENE2D-CONTAINER that includes a TWEEN-MANAGER which is destroyed together with it, eliminating the possibility of resource leaks in the global tween-manager when running an infinite-duration tween on its child nodes and forgetting to KILL it. No matter how many times the node is rendered within a single game loop iteration, its internal TWEEN-MANAGER will only be updated once."
   (manager (ute:make-tween-manager) :type ute:tween-manager)
   (speed 1.0 :type single-float))
 

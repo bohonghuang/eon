@@ -30,25 +30,31 @@
   (setf (particle-3d-position-acceleration instance) value))
 
 (deftype particle-3d-updater ()
+  "A function taking a PARTICLE-3D as parameter. When a particle is activated, UPDATER is called once on it, with the particle's PARTICLE-3D-AGE set to 0.0, and UPDATER should set the initial motion state for the particle. During each subsequent frame, when updating a live particle, UPDATER is called again on it, with the particle's PARTICLE-3D-AGE greater than 0.0, and UPDATER should update the particle's motion state from its current state to the next state."
   '(function (particle-3d)))
 
 (defconstant +particle-3d-emitter-default-capacity+ 128)
 
 (defstruct (particle-3d-emitter (:constructor %make-particle-3d-emitter))
+  "A 3D particle emitter, composed of particles and the logic to initialize and update them."
   (particles nil :type (simple-array particle-3d (*)))
   (updater #'values :type particle-3d-updater))
 
 (declaim (ftype (function (&key (:capacity positive-fixnum) (:updater particle-3d-updater)) (values particle-3d-emitter)) make-particle-3d-emitter))
 (defun make-particle-3d-emitter (&key (capacity +particle-3d-emitter-default-capacity+) (updater #'values))
+  "Create a PARTICLE-3D-EMITTER with CAPACITY. It uses UPDATER of type PARTICLE-3D-UPDATER to initialize and update the motion state of particles."
   (loop :with particles :of-type (simple-array particle-3d (*)) := (cobj:ccoerce (cobj:make-carray capacity :element-type 'particle-3d) 'simple-array)
         :for particle :across particles
         :do (setf (particle-3d-livep particle) nil)
         :finally (return (%make-particle-3d-emitter :particles particles :updater updater))))
 
-(deftype particle-3d-renderer () '(function (particle-3d)))
+(deftype particle-3d-renderer ()
+  "A function taking a PARTICLE-3D as tha parameter, used in PARTICLE-3D-EMITTER-DRAW to render particles."
+  '(function (particle-3d)))
 
 (declaim (ftype (function (particle-3d-emitter non-negative-fixnum) (values boolean)) particle-3d-emitter-emit))
 (defun particle-3d-emitter-emit (emitter count)
+  "Make the EMITTER emit COUNT particles if there is enough capacity available."
   (loop :with particles :of-type (simple-array particle-3d (*)) := (particle-3d-emitter-particles emitter)
         :for particle :across particles
         :when (>= emitted count)
@@ -69,6 +75,7 @@
     result))
 
 (defun particle-3d-initialize-default (particle &optional position)
+  "Initialize the motion state of PARTICLE at POSITION to their default values."
   (clet ((particle (cthe (:pointer (:struct particle-3d)) (& particle))))
     (if position
         (csetf (-> particle position) ([] (cthe (:pointer (:struct raylib:vector3)) (& position))))
@@ -81,6 +88,7 @@
     (setf (-> particle age) 0.0 (-> particle lifetime) 1.0)))
 
 (defun particle-3d-update-motion (particle &optional (delta (locally (declare (special #1=particle-3d-delta-time)) #1#)))
+  "Update the motion state of PARTICLE using interval time DELTA."
   (clet ((particle (cthe (:pointer (:struct particle-3d)) (& particle)))
          (s (foreign-alloca '(:struct raylib:vector4))))
     (clet ((p (& (-> particle position)))
@@ -106,6 +114,7 @@
 
 (declaim (ftype (function (particle-3d-emitter &optional single-float)) particle-3d-emitter-update))
 (defun particle-3d-emitter-update (emitter &optional (delta (game-loop-delta-time)) &aux (particle-3d-delta-time delta))
+  "Update all particles of EMITTER with interval time DELTA."
   (declare (special particle-3d-delta-time))
   (loop :with particles :of-type (simple-array particle-3d (*)) := (particle-3d-emitter-particles emitter)
         :and updater :of-type (function (particle-3d)) := (particle-3d-emitter-updater emitter)
@@ -122,6 +131,7 @@
 
 (declaim (ftype (function (particle-3d-emitter particle-3d-renderer)) particle-3d-emitter-draw))
 (defun particle-3d-emitter-draw (emitter renderer)
+  "Use RENDERER of type PARTICLE-3D-RENDERER to draw all particles of EMITTER."
   (loop :with particles :of-type (simple-array particle-3d (*)) := (particle-3d-emitter-particles emitter)
         :for particle :across particles
         :when (particle-3d-livep particle)
@@ -134,6 +144,7 @@
                           (function (&optional single-float)))
                 particle-3d-emitter-emit-update-draw-function))
 (defun particle-3d-emitter-emit-update-draw-function (emitter rate-function renderer &optional (delta #'game-loop-delta-time))
+  "Return a function that can update EMITTER and draw its particles using RENDERER of type PARTICLE-3D-RENDERER, while utilizing the time interval returned by function DELTA. RATE-FUNCTION is a function that takes a SINGLE-FLOAT type update time interval and returns a SINGLE-FLOAT type representing the number of particles to emit within that time interval. This allows EMITTER to automatically emit particles during the update process without the need to manually call PARTICLE-3D-EMITTER-EMIT. The returned function can optionally accept a time interval as a parameter to replace the result of function DELTA for updating and emitting particles."
   (let ((rate-fraction 0.0))
     (declare (type single-float rate-fraction))
     (lambda (&optional (delta (funcall delta)))
@@ -156,6 +167,7 @@
      . ,body))
 
 (deftype particle-3d-value-generator (type)
+  "A function that accepts a PARTICLE-3D as the parameter and returns a random value."
   `(function (particle-3d) (values ,type)))
 
 (deftype particle-3d-value-or-generator (type)
@@ -167,6 +179,10 @@
 (cobj:define-global-cobject +vector3-zeros+ (raylib:make-vector3 :x 0.0 :y 0.0 :z 0.0))
 
 (defun make-particle-3d-vector2-generator (length)
+  "Return a PARTICLE-3D-VALUE-GENERATOR of RAYLIB:VECTOR2. The LENGTH can have the following types:
+- SINGLE-FLOAT: The returned generator will randomly generate a RAYLIB:VECTOR2 with a length of LENGTH.
+- (CONS SINGLE-FLOAT SINGLE-FLOAT): The returned generator will randomly generate a RAYLIB:VECTOR2 with a length between (CAR LENGTH) and (CDR LENGTH).
+- RAYLIB:VECTOR2: The returned generator will randomly generate a RAYLIB:VECTOR2 where the absolute values of its two components are less than (RAYLIB:VECTOR2-X LENGTH) and (RAYLIB:VECTOR2-Y LENGTH)."
   (etypecase length
     (single-float
      (let ((v (raylib:make-vector2 :x length :y 0.0)))
@@ -190,6 +206,9 @@
          v)))))
 
 (defmacro derive-particle-3d-vector2-generator (generator-form &rest functions)
+  "A macro that accepts a PARTICLE-3D-VALUE-GENERATOR of type RAYLIB:VECTOR2 as its first parameter with remaining parameters to create more PARTICLE-3D-VALUE-GENERATORs based on it, and returns multiple generators represented by all the parameters. Only after the given generator generates a new value, can the remaining generators return new values. Each remaining parameter can have the following types:
+- NUMBER: Used to scale the RAYLIB:VECTOR2 generated by the given generator.
+- FUNCTION: Used to transform the RAYLIB:VECTOR2 generated by the given generator arbitrarily."
   (with-gensyms (generator generated particle)
     (let ((derivations (make-gensym-list (length functions) 'derivation)))
       `(let ((,generator ,generator-form)
@@ -235,6 +254,7 @@
                                         (position (raylib:make-vector2 :x 0.0 :y 0.0))
                                         (up (raylib:make-vector3 :x 0.0 :y 1.0 :z 0.0))
                                         (lifetime 1.0))
+  "A PARTICLE-3D-UPDATER that ensures particles always move on a plane facing CAMERA. The remaining parameters can be either a single value or a PARTICLE-3D-VALUE-GENERATOR of the value type. The origin of this plane will be set at ORIGIN in 3D space, with the upward direction defined by UP. The position, velocity, acceleration, and lifetime of the particle on the plane will be generated respectively by POSITION, VELOCITY, ACCELERATION, and LIFETIME."
   (with-value-generators (acceleration velocity origin position up camera lifetime)
     (declare (type (function (particle-3d) (values single-float)) lifetime)
              (type (function (particle-3d) (values raylib:camera)) camera)
@@ -305,6 +325,7 @@
                                     (normal-offset +vector2-zeros+)
                                     (axial-velocity 10.0)
                                     (axial-acceleration 5.0))
+  "A PARTICLE-3D-UPDATER that initializes particles at ORIGIN and emits them towards TARGET. The particles' normal offset (perpendicular to the direction the particles are emitted) and velocity are generated by NORMAL-OFFSET and NORMAL-VELOCITY, respectively. The axial velocity and acceleration are generated by AXIAL-VELOCITY and AXIAL-ACCELERATION. The lifetime of the particles is automatically calculated based on the distance between ORIGIN and TARGET, as well as AXIAL-VELOCITY and AXIAL-ACCELERATION."
   (with-value-generators (axial-velocity axial-acceleration normal-velocity normal-offset origin target)
     (declare (type (function (particle-3d) (values single-float)) axial-velocity axial-acceleration)
              (type (function (particle-3d) (values raylib:vector3)) origin target)
@@ -372,6 +393,7 @@
                                                &optional
                                                  (end (raylib:fade start 0.0))
                                                  (ease #'ute:linear-inout))
+  "Return a PARTICLE-3D-VALUE-GENERATOR that generates a RAYLIB:COLOR interpolated between RAYLIB:COLORs START and END based on the particle's age using easing function EASE."
   (let ((color (raylib:make-color)))
     (lambda (particle &aux (amount (funcall ease (particle-3d-age particle))))
       (setf (raylib:color-r color) (floor (lerp amount (coerce (raylib:color-r start) 'single-float)
@@ -388,6 +410,7 @@
                           (values (function (particle-3d) (values raylib:vector3))))
                 particle-3d-interpolate-vector3-over-age))
 (defun particle-3d-interpolate-vector3-over-age (start &optional (end +vector3-zeros+) (ease #'ute:linear-inout))
+  "Return a PARTICLE-3D-VALUE-GENERATOR that generates a RAYLIB:VECTOR3 interpolated between RAYLIB:VECTOR3s START and END based on the particle's age using easing function EASE."
   (let ((vector3 (raylib:make-vector3)))
     (lambda (particle &aux (amount (funcall ease (particle-3d-age particle))))
       (raylib:%vector3-lerp (& vector3) (& start) (& end) amount)
@@ -397,6 +420,7 @@
                           (values (function (particle-3d) (values t))))
                 particle-3d-iterate-sequence-over-age))
 (defun particle-3d-iterate-sequence-over-age (sequence &optional (speed 1.0) (ease #'ute:linear-inout))
+  "Return a PARTICLE-3D-VALUE-GENERATOR that traverses the elements of SEQUENCE at SPEED based on the particle's age and easing function EASE."
   (let ((length (length sequence)))
     (lambda (particle &aux (amount (funcall ease (particle-3d-age particle))))
       (elt sequence (mod (floor (* amount length speed)) length)))))
@@ -408,6 +432,7 @@
                                                       (start (raylib:quaternion-from-euler 0.0 0.0 0.0))
                                                       (end (raylib:make-quaternion :x 0.0 :y 0.0 :z 1.0 :w 0.0))
                                                       (ease #'ute:linear-inout))
+  "Return a PARTICLE-3D-VALUE-GENERATOR that generates a QUATERNION interpolated between QUATERNIONs START and END based on the particle's age using easing function EASE."
   (let ((quaternion (raylib:make-quaternion)))
     (lambda (particle &aux (amount (funcall ease (particle-3d-age particle))))
       (raylib:%quaternion-slerp (& quaternion) (& start) (& end) amount)
@@ -418,6 +443,7 @@
                           (values particle-3d-renderer))
                 particle-3d-cube-renderer))
 (defun particle-3d-cube-renderer (&optional (size 0.5) (color (particle-3d-interpolate-color-over-age raylib:+red+)))
+  "A PARTICLE-3D-RENDERER that renders particles as cubes with SIZE and COLOR."
   (with-value-generators (color)
     (declare (type (function (particle-3d) (values raylib:color)) color))
     (lambda (particle)
@@ -431,6 +457,7 @@
                           (values particle-3d-renderer))
                 particle-3d-sphere-renderer))
 (defun particle-3d-sphere-renderer (&optional (size 0.25) (color (particle-3d-interpolate-color-over-age raylib:+red+)))
+  "A PARTICLE-3D-RENDERER that renders particles as spheres with SIZE and COLOR."
   (with-value-generators (color)
     (declare (type (function (particle-3d) (values raylib:color)) color))
     (lambda (particle)
@@ -455,6 +482,7 @@
                                      (axial-velocity 1.0)
                                      (axial-acceleration 0.0)
                                      (radius 1.0) (initial-phase 0.0))
+  "Like PARTICLE-3D-LASER-UPDATER, but rotate particles around the emission axis with INITIAL-PHASE, ANGULAR-VELOCITY, and RADIUS."
   (with-value-generators (axial-velocity axial-acceleration angular-velocity origin target radius initial-phase)
     (declare (type (function (particle-3d) (values single-float)) axial-velocity axial-acceleration angular-velocity initial-phase)
              (type (function (particle-3d) (values single-float)) radius)

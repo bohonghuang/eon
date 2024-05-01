@@ -13,7 +13,8 @@
 (defgeneric scene3d-draw (drawable position origin scale rotation tint)
   (:method ((list list) position origin scale rotation tint)
     (loop :for drawable :in list
-          :do (scene3d-draw drawable position origin scale rotation tint))))
+          :do (scene3d-draw drawable position origin scale rotation tint)))
+  (:documentation "Draw drawable at POSITION in the 3D scene, scaled by SCALE and rotated by ROTATION at ORIGIN, using color TINT."))
 
 (defun scene3d-draw-simple (drawable
                             &key
@@ -22,15 +23,19 @@
                               (scale +vector3-ones+)
                               (rotation +quaternion-identity+)
                               (tint raylib:+white+))
+  "Like SCENE3D-DRAW, but allow selectively providing drawing parameters, with default values used for parameters not provided."
   (scene3d-draw drawable position origin scale rotation tint))
 
-(defgeneric scene3d-bound (object))
+(defgeneric scene3d-bound (object)
+  (:documentation "Get the bounding box of a 3D scene node (excluding its own position, origin, and scaling)."))
 
 (defgeneric scene3d-layout (object)
   (:method (layout) (declare (ignore layout)))
-  (:method ((list list)) (loop :for layout :in list :do (scene3d-layout layout))))
+  (:method ((list list)) (loop :for layout :in list :do (scene3d-layout layout)))
+  (:documentation "Layout a 3D scene node and its child nodes."))
 
 (defstruct (scene3d-node (:constructor nil))
+  "The base class of 3D scene nodes."
   (position (raylib:make-vector3 :x 0.0 :y 0.0 :z 0.0) :type raylib:vector3 :read-only t)
   (origin (raylib:make-vector3 :x 0.0 :y 0.0 :z 0.0) :type raylib:vector3 :read-only t)
   (scale (raylib:make-vector3 :x 1.0 :y 1.0 :z 1.0) :type raylib:vector3 :read-only t)
@@ -52,7 +57,8 @@
     (raylib:copy-vector3 scale (scene3d-node-scale node))
     (raylib:copy-quaternion rotation (scene3d-node-rotation node))
     (raylib:copy-color color (scene3d-node-color node))
-    node))
+    node)
+  (:documentation "Return OBJECT as a SCENE3D-NODE using the construction arguments ARGS."))
 
 (defmethod scene3d-bound ((list list))
   (loop :with position := (raylib:make-vector3)
@@ -68,6 +74,7 @@
         :finally (return bound)))
 
 (defstruct (scene3d-container (:include scene3d-node))
+  "A SCENE3D-NODE that can contain other drawables as its children."
   (content nil))
 
 (defmacro with-scene3d-container-transform ((container (position origin scale rotation tint)) &body body)
@@ -182,9 +189,11 @@
 (defmethod ensure-scene3d-node ((object raylib:model) &rest args)
   (apply #'make-scene3d-container :content object args))
 
-(defvar *scene3d-camera* nil)
+(defvar *scene3d-camera* nil
+  "A variable that needs to be bound to the current CAMERA-3D when rendering certain SCENE3D-NODEs.")
 
 (defstruct (scene3d-billboard (:include scene3d-container))
+  "A SCENE3D-NODE that can render its content (a TEXTURE-REGION) as a billboard (a quad that always faces *SCENE3D-CAMERA*)."
   (up (raylib:make-vector3 :x 0.0 :y 1.0 :z 0.0) :type raylib:vector3 :read-only t))
 
 (defmethod scene3d-draw ((billboard scene3d-billboard) position origin scale rotation tint)
@@ -245,6 +254,7 @@
                                          (repeat nil)
                                          (interval 0.0 interval-p)
                                          (restore-frame-p nil))
+  "Return a TWEEN that sets the FRAMES as the content of BILLBOARD sequentially at INTERVAL or within DURATION, repeating this process REPEAT times. If RESTORE-FRAME-P is non-NIL, restore the original content of IMAGE after this process ends."
   (declare (type single-float duration interval))
   (tween-iteration-in-place
       ((scene3d-billboard-content billboard) frames)
@@ -254,17 +264,20 @@
       :restore-place-p restore-frame-p))
 
 (defstruct (scene3d-layout (:include scene3d-container))
+  "A SCENE3D-NODE that serves as the base class for all layouts and contains a size field independent of its child nodes."
   (bound (raylib:make-bounding-box :min +vector3-zeros+ :max +vector3-zeros+)))
 
 (defmethod scene3d-bound ((layout scene3d-layout))
   (scene3d-layout-bound layout))
 
 (defstruct scene3d-alignment
+  "A structure defining the 3D alignment of a SCENE3D-NODE."
   (x :center :type (member :start :center :end))
   (y :center :type (member :start :center :end))
   (z :center :type (member :start :center :end)))
 
 (defstruct (scene3d-cell (:include scene3d-layout))
+  "A SCENE3D-LAYOUT with a specified size, where its child node can be aligned with it using the specified alignment."
   (alignment (make-scene3d-alignment) :type scene3d-alignment))
 
 (defmethod scene3d-layout ((cell scene3d-cell))
@@ -295,6 +308,7 @@
 
 (defstruct (scene3d-margin (:include scene3d-container)
                            (:constructor %make-scene3d-margin))
+  "A SCENE3D-LAYOUT that provides margins around its child node."
   (lower (raylib:make-vector3 :x 0.0 :y 0.0 :z 0.0))
   (upper (raylib:make-vector3 :x 0.0 :y 0.0 :z 0.0)))
 
@@ -322,6 +336,7 @@
 
 (defstruct (scene3d-canvas (:include scene3d-billboard)
                            (:constructor %make-scene3d-canvas))
+  "A SCENE3D-BILLBOARD used for rendering anything rendered in another rendering stage, often used for rendering 2D scenes within a 3D scene."
   (renderer #'values :type function :read-only t))
 
 (defvar *scene3d-canvas-renderers* nil)
@@ -339,6 +354,7 @@
            (add-game-loop-hook #'scene3d-canvas-render-all :before t) ,renderers)))
 
 (defun make-scene3d-canvas (&rest args &key size renderer &allow-other-keys)
+  "Create a SCENE3D-CANVAS with SIZE, and use RENDERER to draw its contents. The remaining parameters ARGS are used for constructing SCENE3D-NODE."
   (declare (type raylib:vector2 size)
            (type function renderer))
   (remove-from-plistf args :size)
@@ -371,6 +387,7 @@
                                  args)))
 
 (defstruct (scene3d-shaderable-container (:include scene3d-container))
+  "A SCENE3D-CONTAINER containing a shader that is applied when rendering its child node."
   (shader nil :type raylib:shader))
 
 (defmethod scene3d-draw ((container scene3d-shaderable-container) position origin scale rotation tint)

@@ -2,6 +2,7 @@
 
 (defstruct (scene3d-particle-emitter (:include scene3d-node)
                                      (:constructor %make-scene3d-particle-emitter))
+  "A SCENE3D-NODE that wraps a PARTICLE-3D-EMITTER."
   (emitter nil :type particle-3d-emitter)
   (updater nil :type function))
 
@@ -33,6 +34,7 @@
                                               (raylib:fade raylib:+white+ 0.0)
                                               (raylib:fade raylib:+white+ 0.9)
                                               #'sine-yoyo-2)))
+  "A PARTICLE-3D-RENDERER that renders particles using NODE. POSITION, ORIGIN, SCALE, ROTATION, and COLOR can be the parameters or their PARTICLE-3D-VALUE-GENERATORs used for SCENE3D-DRAW. This is suitable for use when drawing billboards with depth testing disabled."
   (let ((position-offset position)
         (rotation-offset rotation))
     (with-value-generators (node position-offset origin scale color rotation-offset)
@@ -66,6 +68,7 @@
                                                  (position +vector3-zeros+)
                                                  (up (raylib:make-vector3 :x 0.0 :y 1.0 :z 0.0))
                                                &allow-other-keys)
+  "Like PARTICLE-3D-SCENE3D-NODE-RENDERER, but use different depths offset by EPSILON for rendering different particles. This is applicable for rendering billboards with depth testing and alpha testing enabled."
   (declare (type single-float epsilon))
   (remove-from-plistf args :epsilon :position :up)
   (let ((offset position))
@@ -93,6 +96,7 @@
 
 (declaim (ftype (function (t &rest t) (values particle-3d-renderer particle-3d-updater)) particle-3d-scene3d-node-sorting-renderer))
 (defun particle-3d-scene3d-node-sorting-renderer (node &rest args)
+  "Like PARTICLE-3D-SCENE3D-NODE-RENDERER, but sort the particles to be rendered from far to near to ensure proper rendering of transparency. This is applicable for rendering NODEs with transparency. The second return value of type PARTICLE-3D-UPDATER should used, in order to update the internal state of the renderer."
   (let* ((renderer (apply (ensure-particle-3d-scene3d-renderer-constructor node) args))
          (particles nil)
          (camera *scene3d-camera*))
@@ -113,6 +117,7 @@
        (push particle particles)))))
 
 (defun particle-3d-scene3d-bullet-renderer (node &rest args)
+  "Like PARTICLE-3D-SCENE3D-NODE-RENDERER, but change its rotation based on the movement direction of the NODE on the plane facing *SCENE3D-CAMERA*."
   (let* ((rotation (raylib:copy-quaternion +quaternion-identity+))
          (renderer (apply (ensure-particle-3d-scene3d-renderer-constructor node) :rotation rotation args))
          (camera *scene3d-camera*))
@@ -134,18 +139,21 @@
 
 (declaim (ftype (function (&rest t) (values (function (&rest t) (values particle-3d-updater)))) scene3d-particle-emitter-billboard-updater))
 (defun scene3d-particle-emitter-billboard-updater (&rest args)
+  "A wrapper for PARTICLE-3D-BILLBOARD-UPDATER to be passed to MAKE-SCENE3D-PARTICLE-EMITTER."
   (values (apply #'rcurry (curry #'particle-3d-billboard-updater *scene3d-camera*) args)))
 
 (declaim (ftype (function ((particle-3d-value-or-generator raylib:vector3) &rest t)
                           (values (function (&rest t) (values particle-3d-updater))))
                 scene3d-particle-emitter-laser-updater))
 (defun scene3d-particle-emitter-laser-updater (target &rest args)
+  "A wrapper for PARTICLE-3D-LASER-UPDATER to be passed to MAKE-SCENE3D-PARTICLE-EMITTER."
   (values (apply #'rcurry #'particle-3d-laser-updater target args)))
 
 (declaim (ftype (function ((particle-3d-value-or-generator raylib:vector3) &rest t)
                           (values (function (&rest t) (values particle-3d-updater))))
                 scene3d-particle-emitter-spiral-updater))
 (defun scene3d-particle-emitter-spiral-updater (target &rest args)
+  "A wrapper for PARTICLE-3D-SPIRAL-UPDATER to be passed to MAKE-SCENE3D-PARTICLE-EMITTER."
   (values (apply #'rcurry #'particle-3d-spiral-updater target args)))
 
 (defun make-scene3d-particle-emitter (&key
@@ -159,6 +167,7 @@
                                         (color (raylib:copy-color raylib:+white+))
                                         (origin position)
                                         (delta #'game-loop-delta-time))
+  "Create a SCENE3D-PARTICLE-EMITTER with CAPACITY, use function UPDATER, which accepts an emission origin and returns a PARTICLE-3D-UPDATER, along with RENDERER of type PARTICLE-3D-RENDERER and construction parameters for SCENE3D-NODEs (POSITION, ORIGIN, SCALE, ROTATION, and COLOR). The number of particles emitted per second is determined by the function RATE (which can be a SINGLE-FLOAT or a function returning a SINGLE-FLOAT) and the interval time returned by function DELTA."
   (let* ((delta (etypecase delta (single-float (constantly delta)) (function delta)))
          (emitter (make-particle-3d-emitter :capacity capacity :updater (funcall updater origin)))
          (updater (particle-3d-emitter-emit-update-draw-function
@@ -172,8 +181,9 @@
                                     :position position :scale scale
                                     :rotation rotation :color color)))
 
-(defun scene3d-particle-emitter-burst (effect count)
-  (particle-3d-emitter-emit (scene3d-particle-emitter-emitter effect) count))
+(defun scene3d-particle-emitter-burst (emitter count)
+  "Make EMITTER emit COUNT particles at once if there is enough remaining capacity."
+  (particle-3d-emitter-emit (scene3d-particle-emitter-emitter emitter) count))
 
 (declaim (inline %camera-3d-rotate-around-target))
 (defun %camera-3d-rotate-around-target (camera quaternion)

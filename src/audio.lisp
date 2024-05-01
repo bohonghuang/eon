@@ -1,9 +1,11 @@
 (in-package #:eon)
 
 (deftype audio-sample-fetcher ()
+  "A function that takes a RAYLIB:AUDIO-STREAM and its required number of audio samples to generate and update the samples for that audio stream."
   `(function (raylib:audio-stream non-negative-fixnum) (values boolean)))
 
 (defun audio-sample-fetcher-subseq (sample-fetcher start &optional end)
+  "Slice SAMPLE-FETCHER to the sample range specified by START and END, and return a new proxy AUDIO-SAMPLE-FETCHER."
   (let ((fetched-sample-count 0))
     (lambda (audio-stream sample-count)
       (when (< fetched-sample-count end)
@@ -15,6 +17,7 @@
           (incf fetched-sample-count sample-count))))))
 
 (deftype audio ()
+  "A generic audio type."
   `(or raylib:audio-stream raylib:music raylib:sound))
 
 (defmacro define-audio-parameter (parameter &optional (default 1.0))
@@ -63,36 +66,43 @@
        (raylib:play-audio-stream stream)
        (add-game-loop-hook
         (lambda () (if (raylib:is-audio-stream-playing stream) t (progn (succeed) nil)))
-        :after #'identity)))))
+        :after #'identity))))
+  (:documentation "Play AUDIO and return it."))
 
 (defgeneric pause-audio (audio)
   (:method ((sound raylib:sound)) (raylib:pause-sound sound))
   (:method ((music raylib:music)) (raylib:pause-music-stream music))
-  (:method ((stream raylib:audio-stream)) (raylib:pause-audio-stream stream)))
+  (:method ((stream raylib:audio-stream)) (raylib:pause-audio-stream stream))
+  (:documentation "Pause AUDIO."))
 
 (defgeneric resume-audio (audio)
   (:method ((sound raylib:sound)) (raylib:resume-sound sound))
   (:method ((music raylib:music)) (raylib:resume-music-stream music))
-  (:method ((stream raylib:audio-stream)) (raylib:resume-audio-stream stream)))
+  (:method ((stream raylib:audio-stream)) (raylib:resume-audio-stream stream))
+  (:documentation "Resume AUDIO."))
 
 (defgeneric stop-audio (audio)
   (:method ((sound raylib:sound)) (raylib:stop-sound sound))
   (:method ((music raylib:music)) (raylib:stop-music-stream music))
-  (:method ((stream raylib:audio-stream)) (raylib:stop-audio-stream stream)))
+  (:method ((stream raylib:audio-stream)) (raylib:stop-audio-stream stream))
+  (:documentation "Stop AUDIO."))
 
 (defgeneric audio-playing-p (audio)
   (:method ((sound raylib:sound)) (raylib:is-sound-playing sound))
   (:method ((music raylib:music)) (raylib:is-music-stream-playing music))
-  (:method ((stream raylib:audio-stream)) (raylib:is-audio-stream-playing stream)))
+  (:method ((stream raylib:audio-stream)) (raylib:is-audio-stream-playing stream))
+  (:documentation "Return whether AUDIO is playing."))
 
 (defgeneric audio-ready-p (audio)
   (:method ((sound raylib:sound)) (raylib:is-sound-ready sound))
   (:method ((music raylib:music)) (raylib:is-music-ready music))
-  (:method ((stream raylib:audio-stream)) (raylib:is-audio-stream-ready stream)))
+  (:method ((stream raylib:audio-stream)) (raylib:is-audio-stream-ready stream))
+  (:documentation "Return whether AUDIO is ready."))
 
 (defvar *audio-paused-p-table* (tg:make-weak-hash-table :weakness :key :test #'eq))
 
 (defun audio-paused-p (audio)
+  "Return whether AUDIO is paused."
   (values (gethash audio *audio-paused-p-table*)))
 
 (defmethod play-audio :after (audio)
@@ -195,16 +205,19 @@
         :after #'identity)))))
 
 (defun promise-play-audio (audio)
+  "Play AUDIO and return a PROMISE:PROMISE which is fulfilled when the playback is finished."
   (multiple-value-bind (audio promise) (play-audio audio)
     (values promise audio)))
 
 (defun fade-audio (audio volume &optional (duration 0.5))
+  "Fade the volume of AUDIO to VOLUME within DURATION."
   (log:trace "Fading volume to ~,2F in ~,2F seconds for audio ~S" volume duration audio)
   (ute:start (ute:tween :to (((audio-volume audio)) (volume))
                         :ease #'ute:linear-inout
                         :duration duration)))
 
 (defun promise-fade-audio (audio volume &optional (duration 0.5))
+  "Like FADE-AUDIO, but return a PROMISE:PROMISE which is fulfilled when the fading is finished."
   (promise:with-promise (succeed)
     (if (plusp duration)
         (let* ((tween (fade-audio audio volume duration))
@@ -213,6 +226,7 @@
         (progn (setf (audio-volume audio) volume) (succeed audio)))))
 
 (defun crossfade-audio (from to &optional (duration-out 1.0) (duration-in 0.0))
+  "Fade out audio FROM within DURATION-OUT and fade in audio TO within DURATION-IN."
   (multiple-value-bind (to promise) (play-audio to)
     (pause-audio to)
     (values
@@ -232,6 +246,7 @@
      promise)))
 
 (defun promise-crossfade-audio (from to &optional (duration-out 1.0) (duration-in 0.0))
+  "Like CROSSFADE-AUDIO, but return a PROMISE:PROMISE which is fulfilled when the crossfading is finished."
   (multiple-value-bind (audio promise-crossfade-finish promise-playback-finish)
       (crossfade-audio from to duration-out duration-in)
     (values promise-crossfade-finish promise-playback-finish audio)))

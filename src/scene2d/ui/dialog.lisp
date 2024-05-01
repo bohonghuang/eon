@@ -1,14 +1,17 @@
 (in-package #:eon)
 
 (defstruct dialog-box-text-style
+  "A structure describing the style of DIALOG-BOX-TEXT."
   (label-style (make-scene2d-label-style) :type scene2d-label-style)
   (lines-spacing 0.0 :type single-float))
 
 (defstruct (dialog-box-text (:include scene2d-box)
                             (:constructor %make-dialog-box-text))
+  "A SCENE2D-NODE used to contain and display the text of a DIALOG-BOX."
   (style (make-dialog-box-text-style) :type dialog-box-text-style))
 
 (defun dialog-box-text-string (text)
+  "Get the string of DIALOG-BOX-TEXT."
   (apply #'concatenate 'string (reduce (lambda (it acc) (nconc it (cons (string #\Newline) acc)))
                                        (mapcar (lambda (margin)
                                                  (mapcar (compose #'scene2d-label-string #'scene2d-margin-content)
@@ -24,7 +27,8 @@
     (let ((label-style (dialog-box-text-style-label-style (dialog-box-text-style *dialog-box-text*))))
       (make-scene2d-label :content (make-text :string text :style (scene2d-label-style-text-style label-style)) :style label-style)))
   (:method ((char character))
-    (ensure-dialog-box-text-label (string char))))
+    (ensure-dialog-box-text-label (string char)))
+  (:documentation "Return OBJECT as the label for DIALOG-BOX-TEXT. The returned object doesn't necessarily have to be a SCENE2D-LABEL, but only when the returned object is of that type, can the string of DIALOG-BOX-TEXT be retrieved."))
 
 (defun dialog-box-text-set-content (text string)
   (loop :with *dialog-box-text* := text
@@ -51,6 +55,7 @@
         :finally (scene2d-layout text)))
 
 (defun (setf dialog-box-text-string) (string text)
+  "Set the content of TEXT to STRING. STRING doesn't necessarily have to be of type STRING, but it can be a VECTOR composed of elements that specialize method ENSURE-DIALOG-BOX-TEXT-LABEL."
   (dialog-box-text-set-content text string))
 
 (defun make-dialog-box-text (&rest args &key (string "") (size (raylib:make-vector2 :x 100.0 :y 50.0)) &allow-other-keys)
@@ -65,6 +70,7 @@
 
 (defstruct (dialog-box (:include scene2d-container)
                        (:constructor %make-dialog-box))
+  "A SCENE2D-NODE that wraps a DIALOG-BOX-TEXT inside it and provides additional functionalities such as vertical scrolling and page indicator."
   (metadata (make-hash-table)))
 
 (defun dialog-box-text (box)
@@ -77,9 +83,11 @@
   (gethash 'dialog-box-indicator (dialog-box-metadata box)))
 
 (defun dialog-box-string (box)
+  "Get the text string of BOX."
   (dialog-box-text-string (dialog-box-text box)))
 
 (defun (setf dialog-box-string) (string box)
+  "Set the text content of BOX to STRING. STRING can be any VECTOR whose elements specialize method ENSURE-DIALOG-BOX-TEXT-LABEL."
   (setf (scene2d-size (dialog-box-text box)) (scene2d-size (dialog-box-region box))
         (dialog-box-text-string (dialog-box-text box)) string
         (raylib:vector2-y (dialog-box-text-position (dialog-box-text box))) 0.0))
@@ -96,6 +104,7 @@
   :test #'equalp)
 
 (defstruct dialog-box-style
+  "A structure describing the style of DIALOG-BOX."
   (dialog-box-text-style (make-dialog-box-text-style) :type dialog-box-text-style)
   (indicator (load-asset 'raylib:texture +dialog-box-default-indicator-texture+ :format :png)))
 
@@ -128,9 +137,11 @@
       (flet ((alpha () alpha)
              ((setf alpha) (value)
                (setf (raylib:color-a (scene2d-color label)) (* (truncate (setf alpha value)) 255))))
-        (promise-tween (ute:tween :to (((alpha)) (1.0)) :duration duration :ease #'ute:linear-inout))))))
+        (promise-tween (ute:tween :to (((alpha)) (1.0)) :duration duration :ease #'ute:linear-inout)))))
+  (:documentation "Return a PROMISE:PROMISE that is fulfilled after OBJECT is displayed as the label for DIALOG-BOX-TEXT."))
 
 (defun dialog-box-promise-display (box &optional (break-handler (lambda (has-next-p) (declare (ignore has-next-p)) (async))))
+  "Make BOX display the text previously set using (SETF DIALOG-BOX-STRING) with the typewriter effect. When the entire text is displayed, the returned PROMISE:PROMISE is fulfilled. BREAK-HANDLER is a function that is called with a parameter indicating whether there is another page or if the text has been fully displayed. It returns a PROMISE:PROMISE, and when this PROMISE:PROMISE is fulfilled, BOX continues to display the remaining content."
   (labels ((line-labels (line) (mapcar #'scene2d-margin-content (scene2d-box-children (scene2d-margin-content line))))
            (hide-line (line) (loop :for label :in (line-labels line) :do (setf (raylib:color-a (scene2d-color label)) 0))))
     (let* ((text (dialog-box-text box))
@@ -189,6 +200,7 @@
     (* (if (< y 0.25) y (- 0.5 y)) -4.0 -2.0)))
 
 (defun dialog-box-promise-confirm (&optional (box *dialog-box*) (display-indicator-p t))
+  "Make BOX wait for the user to press a button to continue reading the content. When DISPLAY-INDICATOR-P is non-NIL, a floating page indicator will be displayed during this procedure for prompting purposes."
   (let* ((indicator (dialog-box-indicator box))
          (indicator-y (raylib:vector2-y (scene2d-node-position indicator))))
     (let (confirmedp)
@@ -207,6 +219,10 @@
         (raylib:copy-color raylib:+blank+ (scene2d-node-color indicator))))))
 
 (defun dialog-box-promise-display-confirm (box &optional (last-confirm t))
+  "A combination of DIALOG-BOX-PROMISE-DISPLAY and DIALOG-BOX-PROMISE-CONFIRM. LAST-CONFIRM can take the following values:
+- T: User confirmation is still required after displaying the entire text.
+- :NEXT: User confirmation is still required after displaying the entire text, and the page indicator is shown.
+- NIL: The returned PROMISE:PROMISE will be fulfilled directly after displaying the entire text, without requiring user confirmation."
   (dialog-box-promise-display box (lambda (has-next-p)
                                     (if (or last-confirm has-next-p)
                                         (dialog-box-promise-confirm box (or has-next-p (eql last-confirm :next)))

@@ -1,25 +1,34 @@
 (in-package #:eon)
 
-(deftype select-box-entry () `scene2d-focusable)
+(deftype select-box-entry ()
+  "A SCENE2D-FOCUSABLE that specializes methods SELECT-BOX-ENTRY-FOCUSED-P and (SETF SELECT-BOX-ENTRY-FOCUSED-P)."
+  'scene2d-focusable)
 
 (defun select-box-entry-content (entry)
+  "Get the content of ENTRY."
   (scene2d-focusable-content entry))
 
 (defun (setf select-box-entry-content) (content entry)
+  "Set the content of ENTRY."
   (setf (scene2d-focusable-content entry) content))
 
-(defgeneric select-box-entry-focused-p (entry))
+(defgeneric select-box-entry-focused-p (entry)
+  (:documentation "Return whether ENTRY is focused."))
 
-(defgeneric (setf select-box-entry-focused-p) (value entry))
+(defgeneric (setf select-box-entry-focused-p) (value entry)
+  (:documentation "Set whether ENTRY is focused."))
 
 (defstruct select-box-border-entry-style
+  "A structure describing the style of SELECT-BOX-BORDER-ENTRY."
   (color (raylib:make-color :r 255 :g 97 :b 90 :a 255) :type raylib:color))
 
 (defstruct (select-box-border-entry (:include scene2d-focusable))
+  "A SELECT-BOX-ENTRY that displays a rectangular border around its child when focused."
   (rectangle (raylib:make-rectangle) :type raylib:rectangle)
   (style (make-select-box-border-entry-style) :type select-box-border-entry-style))
 
 (defun select-box-border-entry (child)
+  "Wrap CHILD within a SELECT-BOX-BORDER-ENTRY and return the entry."
   (make-select-box-border-entry :content child))
 
 (defmethod scene2d-draw ((entry select-box-border-entry) position origin scale rotation tint)
@@ -53,10 +62,12 @@
   (setf (raylib:color-a (select-box-border-entry-style-color (select-box-border-entry-style entry))) (if value 255 0))) ; TODO: Avoid modifying the style.
 
 (defstruct select-box-style
+  "A structure describing the style of SELECT-BOX-STYLE. The entry type is a SYMBOL or FUNCTION that, when invoked by a newly added child of the SELECT-BOX, returns a wrapper object of type SELECT-BOX-ENTRY specializing method (SETF SELECT-BOX-ENTRY-FOCUSED-P)."
   (label-style (make-scene2d-label-style) :type scene2d-label-style)
   (entry-type 'select-box-border-entry :type (or symbol function)))
 
 (defstruct (select-box (:include scene2d-table))
+  "A SCENE2D-NODE that presents its children in a table, allowing the user to select one using directional keys."
   (dimension 1 :type positive-fixnum)
   (style (make-select-box-style) :type select-box-style))
 
@@ -68,9 +79,11 @@
   (call-next-method))
 
 (defun select-box-entries (box)
+  "Get the entries of BOX."
   (mapcan #'identity (scene2d-table-children box)))
 
 (defun select-box-add-child (box child)
+  "Add CHILD to the end of BOX."
   (let* ((alignment (make-scene2d-alignment :vertical :start :horizontal :start))
          (constructor (select-box-style-entry-type (select-box-style box)))
          (entry (funcall constructor child)))
@@ -80,6 +93,7 @@
     entry))
 
 (defun select-box-children (box)
+  "Get the children of BOX."
   (mapcar #'select-box-entry-content (select-box-entries box)))
 
 (defmethod scene2d-construct-form ((type (eql 'select-box))
@@ -126,6 +140,7 @@
 (define-scene2d-default-construct-form select-box-style (label-style entry-type))
 
 (defun select-box-promise-index (box &optional (initial-index 0) (handler (constantly nil)))
+  "Allow the user to select a child of BOX using directional keys and return a PROMISE:PROMISE of the selected child's index. The child with INITIAL-INDEX will be selected by default. HANDLER is called before and after the user presses a key (moves the cursor or makes a selection). Before the key is pressed, it is called with FOCUS-MANAGER as the only parameter. After the key is pressed, it is called with FOCUS-MANAGER and the KEY pressed by the user as parameters, then if HANDLER returns a non-NIL value, it will be used to fulfill the PROMISE:PROMISE of this function, thereby terminating the user's selection."
   (let* ((entries (select-box-entries box))
          (initial-focused (nth initial-index entries))
          (manager (make-scene2d-focus-manager :focusables (cons initial-focused (remove initial-focused entries)))))
@@ -148,6 +163,7 @@
           (setf (select-box-entry-focused-p (scene2d-focus-manager-focused manager)) t))))))
 
 (defstruct (table-select-box (:include select-box))
+  "A SELECT-BOX constructed from a SCENE2D-TABLE."
   (table (make-scene2d-table) :type scene2d-table))
 
 (defmethod scene2d-layout ((select-box table-select-box))
@@ -155,10 +171,12 @@
   (call-next-method))
 
 (defun table-select-box (table)
+  "Construct a SELECT-BOX from TABLE."
   (let ((select-box (make-table-select-box :table table :orientation (scene2d-table-orientation table))))
     (mapc (curry #'select-box-add-child select-box) (scene2d-box-children table)) select-box))
 
 (defun swappable-select-box (box)
+  "Convert BOX of type SELECT-BOX into a SWAPPABLE-SELECT-BOX."
   (loop :with constructor := (select-box-style-entry-type (select-box-style box))
         :for entry :in (select-box-entries box)
         :for content := (funcall constructor (select-box-entry-content entry))
@@ -167,6 +185,7 @@
         :finally (return box)))
 
 (defun swappable-select-box-promise-index (box &optional (initial-index 0) (handler (constantly nil)))
+  "Like SELECT-BOX-PROMISE-INDEX, but allow the user to swap the children of two BOXes using the SELECT key. When the user confirms the swap, the value of the fulfilled PROMISE:PROMISE will be a CONS where the CAR and CDR represent the indices of the two children to be swapped."
   (let ((entries (select-box-entries box))
         (swap-entries (mapcar #'select-box-entry-content (select-box-entries box)))
         (swap-index nil))
@@ -203,9 +222,11 @@
             (when swap-index
               (setf (select-box-entry-focused-p (nth swap-index swap-entries)) t))))))))
 
-(defstruct (select-box-transparent-entry (:include scene2d-focusable)))
+(defstruct (select-box-transparent-entry (:include scene2d-focusable))
+  "A SELECT-BOX-ENTRY that directly delegates methods SELECT-BOX-ENTRY-FOCUSED-P and (SETF SELECT-BOX-ENTRY-FOCUSED-P) to its child for specialization.")
 
 (defun select-box-transparent-entry (content)
+  "Wrap CONTENT within a SELECT-BOX-TRANSPARENT-ENTRY and return."
   (make-select-box-transparent-entry :content content))
 
 (defmethod select-box-entry-focused-p ((entry select-box-transparent-entry))

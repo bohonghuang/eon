@@ -1,6 +1,7 @@
 (in-package #:eon)
 
 (defstruct (shadow-map-renderer (:constructor %make-shadow-map-renderer))
+  "A renderer used to contain and render a shadow map."
   (camera (raylib:make-camera-3d) :read-only t)
   (canvas nil :type scene2d-canvas :read-only t)
   (thunk #'values :type function)
@@ -13,6 +14,7 @@
                                           :y (coerce +world-viewport-default-height+ 'single-float)))
                                    (filter :bilinear)
                                  &aux renderer)
+  "Create a SHADOW-MAP-RENDERER where the light source position and direction are defined by the CAMERA. The shadow map of SIZE uses FILTER as its texture filter."
   (setf renderer (%make-shadow-map-renderer
                   :camera camera
                   :canvas (scene2d-construct
@@ -32,9 +34,11 @@
   renderer)
 
 (defun shadow-map-renderer-texture (renderer)
+  "Return the texture of RENDERER."
   (texture-region-texture (scene2d-canvas-content (shadow-map-renderer-canvas renderer))))
 
 (defun shadow-map-renderer-render (renderer &optional thunk)
+  "Make RENDERER render its shadow map using THUNK."
   (when thunk (setf (shadow-map-renderer-thunk renderer) thunk))
   (scene2d-canvas-render (shadow-map-renderer-canvas renderer))
   (let ((thunk (shadow-map-renderer-thunk renderer)))

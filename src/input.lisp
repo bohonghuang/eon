@@ -18,34 +18,42 @@
             (:up . :up)
             (:down . :down)
             (:left . :left)
-            (:right . :right))))
+            (:right . :right)))
+  "An association list used to represent the mapping of gamepad buttons to keyboard keys.")
 
 (defun key-keyboard (key)
+  "Get the keyboard key corresponding to KEY."
   (declare (type keyword key))
   (or (assoc-value *keyboard-key-mappings* key)
       (error "Unknown input key: ~S" key)))
 
 (defun keyboard-key (key)
+  "Get the key corresponding to keyboard KEY."
   (declare (type fixnum key))
   (rassoc-value *keyboard-key-mappings* key))
 
 (defun key-pressed-p (key)
+  "Return whether KEY has just been pressed."
   (raylib:is-key-pressed (key-keyboard key)))
 
 (defun key-down-p (key)
+  "Return whether KEY is being pressed."
   (raylib:is-key-down (key-keyboard key)))
 
 (defun key-released-p (key)
+  "Return whether KEY has just been released."
   (raylib:is-key-released (key-keyboard key)))
 
 (defun key-up-p (key)
+  "Return whether KEY is not being pressed."
   (raylib:is-key-up (key-keyboard key)))
 
 (defvar *previous-input-query-function* nil)
 
 (defconstant +key-queue-size-limit+ 1)
 
-(defvar *key-queue* nil)
+(defvar *key-queue* nil
+  "A queue of pressed keys. When a key is appended, it is considered to be pressed and returned by PRESSED-KEY or PROMISE-PRESSED-KEY.")
 
 (defparameter *key-repeat-enabled-p* t)
 
@@ -70,6 +78,7 @@
       (pop *key-queue*))))
 
 (defun pressed-char ()
+  "Get the recently pressed character, returning NIL if none was pressed."
   (let ((code (raylib:get-char-pressed))
         (key (raylib:get-key-pressed)))
     (if (zerop code)
@@ -90,6 +99,7 @@
               (return-from pressed-char nil))))))
 
 (defun promise-pressed-char ()
+  "Wait for a character to be pressed and return a PROMISE:PROMISE of it."
   (promise:with-promise (succeed)
     (add-game-loop-hook
      (lambda ()
@@ -98,6 +108,7 @@
      :before #'not)))
 
 (defun promise-pressed-key ()
+  "Wait for a key to be pressed and return a PROMISE:PROMISE of it."
   (promise:with-promise (succeed)
     (add-game-loop-hook
      (lambda ()

@@ -23,7 +23,8 @@
             (with-gensyms (form)
               `(let ((,form ,result))
                  (setf (gethash ',name ,scene2d-construct-hash-table) ,form) ,form))
-            result)))))
+            result))))
+  (:documentation "Expand form (TYPE . ARGS) in macro SCENE2D-CONSTRUCT."))
 
 (defun scene2d-argument-construct-form (arg)
   (typecase arg
@@ -34,6 +35,7 @@
     (t arg)))
 
 (defmacro scene2d-construct (root)
+  "Recursively expand construction form ROOT into code."
   (with-gensyms (scene2d-construct-hash-table)
     (declare (special scene2d-construct-hash-table))
     `(let ((,scene2d-construct-hash-table (make-hash-table)))
@@ -47,6 +49,7 @@
                ,scene2d-construct-hash-table))))
 
 (defmacro define-scene2d-default-construct-form (type (&rest args))
+  "Define a SCENE2D-CONSTRUCT-FORM method specialized on 'TYPE, treating ARGS as keyword arguments to be passed to the constructor of TYPE."
   `(defmethod scene2d-construct-form ((type (eql ',type)) &rest args &key ,@args &allow-other-keys)
      (declare (ignore . ,args))
      (when-let ((child (getf args :child)))
@@ -181,9 +184,13 @@
 (define-scene2d-default-construct-form scene2d-tile-scroll-region-style (tile-scroll-style))
 
 (defstruct (scene2d-constructed (:include scene2d-container))
+  "The default container used when creating widgets defined through DEFINE-SCENE2D-CONSTRUCTED."
   (metadata (make-hash-table) :type hash-table))
 
 (defmacro define-scene2d-constructed (name construct-form &rest options)
+  "Define a constructable widget type NAME using CONSTRUCT-FORM with SCENE2D-CONSTRUCT's syntax. This will create a constructor MAKE-[NAME], the expansion of its construction form, and accessors for its named children. The following options in DEFCLASS style can be used:  
+- (:CONSTRUCTOR (&REST ARGS) &BODY BODY): Customize the constructor of the widget, which takes ARGS as keyword arguments. The default constructor can be invoked with a % prefix in BODY.
+- (:CLASS CLASS-NAME :CONSTRUCTOR CLASS-CONSTRUCTOR-NAME): Associate the widget with a structure named CLASS-NAME as its class. This class must be a subclass of SCENE2D-CONSTRUCTED and is often used for specializing methods on the widget. CLASS-CONSTRUCTOR-NAME is used to specify the default constructor for creating the SCENE2D-CONSTRUCTED."
   (labels ((collect-names (form)
              (when (consp form)
                (typecase (car form)

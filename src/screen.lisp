@@ -30,11 +30,13 @@
   (:method ((function function))
     (funcall function))
   (:method ((null null))
-    (raylib:clear-background raylib:+black+)))
+    (raylib:clear-background raylib:+black+))
+  (:documentation "Render SCREEN. Anything that specializes this generic function can be considered a screen, such as built-in types FUNCTION and NULL."))
 
 (declaim (ftype (function (t)) screen-manager-render-default))
 
 (defstruct (screen-manager (:include post-effect-manager))
+  "A manager for handling screen rendering and transitions."
   (screen nil)
   (update-function #'screen-manager-update-default :type function)
   (render-function #'screen-manager-render-default :type function))
@@ -50,6 +52,7 @@
 (setf (assoc-value *game-special-bindings* '*screen-manager*) '(make-screen-manager))
 
 (defmacro with-screen-manager-mode (screen-manager &body body)
+  "Set the render target during the execution of BODY to the internal RAYLIB:RENDER-TEXTURE of SCREEN-MANAGER."
   `(with-post-effect-manager-mode ,screen-manager . ,body))
 
 (defun screen-manager-update-default (screen-manager)
@@ -66,12 +69,15 @@
   (funcall (screen-manager-render-function screen-manager) screen-manager))
 
 (defun current-screen (&optional (screen-manager *screen-manager*))
+  "Get the current screen."
   (screen-manager-screen screen-manager))
 
 (defun (setf current-screen) (screen &optional (screen-manager *screen-manager*))
+  "Set the current screen."
   (setf (screen-manager-screen screen-manager) screen))
 
 (defun do-screen-loop (&optional (viewport (make-fit-viewport)))
+  "Use a SCREEN-MANAGER to handle the game loop and ensure that the content of the screen is drawn within VIEWPORT."
   (do-game-loop
     (let ((screen-manager *screen-manager*))
       (screen-manager-update screen-manager)
@@ -117,9 +123,11 @@
          (declare (dynamic-extent ,args) (ignore ,type ,name))
          (apply #',(symbolicate '#:make- name) ,args)))))
 
-(defgeneric make-screen-transition (type name &rest args))
+(defgeneric make-screen-transition (type name &rest args)
+  (:documentation "Make a SCREEN-TRANSITION named NAME of transition TYPE with ARGS."))
 
 (defmacro define-simple-shader-screen-transition ((name source) &body uniforms)
+  "Define a SCREEN-TRANSITION named NAME from SOURCE with UNIFORMS. SOURCE is the SOURCE in (LOAD-ASSET 'RAYLIB:SHADER SOURCE) used for loading the shader. The loaded shader should contain a uniform named \"progress\" of type float. The syntax and requirements for UNIFORMS are consistent with the SLOTS of DEFINE-SHADERABLE-UNIFORMS."
   (let ((transition-in (symbolicate name '#:-in))
         (transition-out (symbolicate name '#:-out))
         (progress-accessor (symbolicate name '#:-progress)))
@@ -178,6 +186,7 @@ void main() {
   ("background" raylib:+black+ :type raylib:color))
 
 (defun promise-play-screen-transition (transition)
+  "Play TRANSITION and a PROMISE:PROMISE is fulfilled when this procedure is done."
   (multiple-value-bind (transition-update-function transition-tween) (ensure-screen-transition transition)
     (with-accessors ((update-function screen-manager-update-function))
         *screen-manager*
@@ -196,6 +205,7 @@ void main() {
                                   &optional
                                     (transition-out (make-screen-transition-fade-out :duration 0.25))
                                     (transition-in (make-screen-transition-fade-in :duration 0.25)))
+  "Play TRANSITION-OUT, set the current screen to TARGET-SCREEN, and then play TRANSITION-IN. The returned PROMISE:PROMISE is fulfilled when this procedure is done."
   (async
     (await (promise-play-screen-transition transition-out))
     (setf (current-screen) target-screen)
