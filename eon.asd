@@ -29,7 +29,7 @@
                                            (:file "select")
                                            (:file "input"))
                               :depends-on ("basic" "construct" "focus" "scroll")))
-                :depends-on ("package" "texture" "misc" "input" "tween"))
+                :depends-on ("package" "texture" "misc" "input" "tween" "shader"))
                (:file "particle" :depends-on ("package"))
                (:module "scene3d"
                 :components ((:file "basic")

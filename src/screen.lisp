@@ -90,9 +90,11 @@
 (defgeneric ensure-screen-transition (object)
   (:method ((function function)) function))
 
-(defstruct shader-screen-transition)
+(defvar *shader-screen-transition-shader-uniforms*)
 
-(defgeneric shader-screen-transition-shader (transition))
+(defstruct shader-screen-transition
+  (shader (car *shader-screen-transition-shader-uniforms*) :type raylib:shader :read-only t)
+  (shader-uniforms (cdr *shader-screen-transition-shader-uniforms*) :type cobj:cobject :read-only t))
 
 (defmethod ensure-screen-transition ((transition shader-screen-transition))
   (let ((shader (shader-screen-transition-shader transition)))
@@ -100,25 +102,26 @@
      (lambda (screen-manager)
        (with-screen-manager-mode screen-manager
          (raylib:with-shader-mode shader
-           (update-shaderable-uniforms transition)
+           (update-shader-uniforms
+            (shader-screen-transition-shader-uniforms transition)
+            (shader-screen-transition-shader transition))
            (screen-manager-render screen-manager))))
      (ute:timeline (:sequence)))))
 
 (defmacro define-shader-screen-transition ((name source) &body uniforms)
-  (with-gensyms (transition type arg args)
+  (with-gensyms ( type arg args)
     `(progn
        (defstruct (,name (:include shader-screen-transition)
-                         (:constructor ,(symbolicate '#:%make- name)))
-         (shader (load-asset 'raylib:shader ,source) :type raylib:shader :read-only t)
-         (shader-uniforms (,(symbolicate '#:make- name '#:-shader-uniforms)) :read-only t))
+                         (:constructor ,(symbolicate '#:%make- name))))
        (define-shaderable-uniforms ,name . ,uniforms)
-       (defmethod shader-screen-transition-shader ((,transition ,name))
-         (,(symbolicate name '#:-shader) ,transition))
        (defun ,(symbolicate '#:make- name) (&rest ,args)
          (declare (dynamic-extent ,args))
-         (apply #',(symbolicate '#:%make- name)
-                :shader-uniforms (or (getf ,args :shader-uniforms) (apply #',(symbolicate '#:make- name '#:-shader-uniforms) (delete-from-plist ,args :shader-uniforms :shader)))
-                (when-let ((,arg (getf ,args :shader))) (list :shader ,arg))))
+         (let ((*shader-screen-transition-shader-uniforms*
+                 (cons (load-asset 'raylib:shader ,source)
+                       (,(symbolicate '#:make- name '#:-shader-uniforms)))))
+           (apply #',(symbolicate '#:%make- name)
+                  :shader-uniforms (or (getf ,args :shader-uniforms) (apply #',(symbolicate '#:make- name '#:-shader-uniforms) (delete-from-plist ,args :shader-uniforms :shader)))
+                  (when-let ((,arg (getf ,args :shader))) (list :shader ,arg)))))
        (defmethod make-screen-transition ((,type null) (,name (eql ',name)) &rest ,args)
          (declare (dynamic-extent ,args) (ignore ,type ,name))
          (apply #',(symbolicate '#:make- name) ,args)))))

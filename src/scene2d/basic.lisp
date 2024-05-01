@@ -778,11 +778,15 @@
 
 (defstruct (scene2d-shaderable-container (:include scene2d-container))
   "A SCENE2D-CONTAINER containing a shader that is applied when rendering its child node."
-  (shader nil :type raylib:shader))
+  (shader nil :type raylib:shader)
+  (shader-uniforms nil :type (or cobj:cobject null)))
 
 (defmethod scene2d-draw ((container scene2d-shaderable-container) position origin scale rotation tint)
-  (raylib:with-shader-mode (scene2d-shaderable-container-shader container)
-    (call-next-method)))
+  (let ((shader (scene2d-shaderable-container-shader container)))
+    (raylib:with-shader-mode shader
+      (when-let ((uniforms (scene2d-shaderable-container-shader-uniforms container)))
+        (update-shader-uniforms uniforms shader))
+      (call-next-method))))
 
 (defstruct (scene2d-canvas (:include scene2d-image)
                            (:constructor %make-scene2d-canvas))
