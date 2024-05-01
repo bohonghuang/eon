@@ -163,7 +163,13 @@
 
 (define-scene2d-default-construct-form scene2d-shaderable-container (child shader))
 
-(define-scene2d-default-construct-form scene2d-canvas (size renderer))
+(defmethod scene2d-construct-form ((type (eql 'scene2d-canvas)) &rest args &key child size renderer &allow-other-keys)
+  (remove-from-plistf args :child :size :renderer)
+  (if child
+      (once-only (child)
+        (assert (and (null size) (null renderer)))
+        `(make-scene2d-canvas :size (progn (scene2d-layout ,child) (scene2d-size ,child)) :renderer (curry #'scene2d-draw-simple ,child) . ,args))
+      `(make-scene2d-canvas :size ,size :renderer ,renderer . ,args)))
 
 (define-scene2d-default-construct-form scene2d-tween-container ())
 
