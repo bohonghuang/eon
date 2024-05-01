@@ -161,7 +161,7 @@
       `(let ((,style ,style-form))
          (make-scene2d-label :content (make-text :string ,string :style (scene2d-label-style-text-style ,style)) :style ,style . ,args)))))
 
-(define-scene2d-default-construct-form scene2d-shaderable-container (child shader))
+(define-scene2d-default-construct-form scene2d-shaderable-container (child shader shader-uniforms))
 
 (defmethod scene2d-construct-form ((type (eql 'scene2d-canvas)) &rest args &key child size renderer &allow-other-keys)
   (remove-from-plistf args :child :size :renderer)
