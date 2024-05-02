@@ -1,0 +1,65 @@
+#+TITLE: EON
+
+[[file:logo.gif]]
+
+An easy-to-use but flexible game framework based on [[https://www.raylib.com/][Raylib]] for Common Lisp.
+
+* Introduction
+EON is a game framework built upon and cooperating with [[https://github.com/bohonghuang/claw-raylib][claw-raylib]] (my high-level bindings for
+Raylib), integrating commonly used facilities in game (especially old school style)
+development. If you are familiar with Raylib, you should find it easy to get started with EON since
+all interfaces of Raylib (including [[https://github.com/raysan5/raygui][Raygui]], Raymath, RLGL) can be used alongside EON. It is
+important to note that EON was spun out from one of my retro game projects, mainly focusing on
+optimizing and developing functionalities for console-style games without additional support for
+modern PC games, for instance, the framework by default simulates the keyboard as gamepad input and
+the built-in input events do not yet support mouse, although you can directly obtain mouse input
+through Raylib. This project is still under development, so APIs are subject to change. EON and all
+its dependencies can be loaded and run on SBCL, CCL, and ECL.
+* Features
+Along with the rich set of features of Raylib (such as support for various image,
+audio, font formats, batch rendering, shape drawing, and collision
+detection), EON offers many useful functionalities for game development:
+1. *Asynchronous Support* \\
+   A suite of built-in asynchronous functions allowing for quick writing
+   of events and logic using ~async~ / ~await~ syntax.
+2. *Asset Management* \\
+   Unified API for loading and unloading assets, ensuring reusable
+   assets are not repeatedly loaded, with non-reusable assets
+   managed by the GC automatically, though manual management is also an
+   option.
+3. *Audio Management* \\
+   Context-free, unified audio control API  and automatic audio stream resource management.
+4. *Screen Management* \\
+   Proper screen abstraction for managing scene/interface switching with transition animations.
+5. *Viewport Support* \\
+   Facilitates adaptation to different screen sizes and window dimensions.
+6. *Scene System* \\
+   Build 2D/3D scene node tree in your preferred way, transforming, rendering, and updating them together.
+7. *GUI System* \\
+   Based on the 2D scene system, the GUI system includes built-in
+   widgets such as text, images, selection boxes, input boxes, dialogue
+   boxes, and allows for easy creation of custom widgets, complete with
+   a flexible GUI layout system and DSL for declarative UI construction.
+8. *Particle Effect System* \\
+   A particle effect system designed with logic and rendering
+   separation, featuring abstract updaters and renderers for high
+   customization and extension of particle systems.
+9. *Tiled Map Renderer* \\
+   An optimized built-in Tiled map renderer capable of rendering Tiled maps or any of their layers.
+10. *More...* \\
+    Scrolling backgrounds, key combos, focus management, shader uniform management, asynchronous job system, etc.
+* Dependencies
+Currently, the EON framework relies solely on =libraylib= as its foreign library, which should be ensured correctly installed on your machine.
+Additionally, some libraries or their latest versions might not yet be included in the latest Quicklisp distribution.
+You can find them in my repositories and clone them to a location where Quicklisp can find them:
+- [[https://github.com/bohonghuang/claw-raylib][claw-raylib]] \\
+  You also need to follow the [[https://github.com/bohonghuang/claw-raylib#build][build instruction of claw-raylib]] to automatically generate the bindings. 
+- [[https://github.com/bohonghuang/cl-universal-tween-engine][cl-universal-tween-engine]]
+- [[https://github.com/bohonghuang/cl-cont-optimizer][cl-cont-optimizer]]
+- [[https://github.com/bohonghuang/promise-async-await][promise-async-await]]
+- [[https://github.com/bohonghuang/cffi-ops][cffi-ops]]
+- [[https://github.com/bohonghuang/cffi-object][cffi-object]]
+* Get Started
+To get started, you can refer to the [[https://www.raylib.com/examples.html][examples]] and [[https://www.raylib.com/cheatsheet/cheatsheet.html][cheatsheet]] to learn the interfaces of Raylib,
+and familiarize yourself with the usage of EON by exploring the [[https://github.com/bohonghuang/eon-examples][eon-examples]].
+Currently, most exported APIs should have docstrings to explain their arguments and usage.
