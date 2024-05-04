@@ -20,7 +20,10 @@
 (defmacro with-post-effect-manager-mode (post-effect-manager &body body)
   (with-gensyms (render-texture texture)
     `(progn
-       (raylib:with-texture-mode (post-effect-manager-vertically-flipped-render-texture ,post-effect-manager) . ,body)
+       (raylib:with-texture-mode (post-effect-manager-vertically-flipped-render-texture ,post-effect-manager)
+         (rlgl:set-blend-factors-separate ,rlgl:+src-alpha+ ,rlgl:+one-minus-src-alpha+ ,rlgl:+one+ ,rlgl:+one+ ,rlgl:+func-add+ ,rlgl:+max+)
+         (raylib:with-blend-mode ,(foreign-enum-value 'rlgl:blend-mode :custom-separate)
+           . ,body))
        (raylib:with-texture-mode (post-effect-manager-render-texture ,post-effect-manager)
          (clet* ((,render-texture (cthe (:pointer (:struct raylib:render-texture)) (& (post-effect-manager-vertically-flipped-render-texture ,post-effect-manager))))
                  (,texture (& (-> ,render-texture raylib:texture))))
