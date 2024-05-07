@@ -396,11 +396,11 @@
 
 (defun rlgl-apply-scene3d-draw-arguments (position origin scale rotation tint)
   (rlgl:translatef (raylib:vector3-x position) (raylib:vector3-y position) (raylib:vector3-z position))
-  (rlgl:scalef (raylib:vector3-x scale) (raylib:vector3-y scale) (raylib:vector3-z scale))
   (clet* ((axis+angle (foreign-alloca '(:struct raylib:vector4)))
           (axis (cthe (:pointer (:struct raylib:vector4)) (& axis+angle)))
           (angle (cthe (:pointer :float) (& (-> axis+angle raylib:w)))))
     (raylib:%quaternion-to-axis-angle (& rotation) axis angle)
     (rlgl:rotatef (radian-degree ([] angle)) (-> axis raylib:x) (-> axis raylib:y) (-> axis raylib:z)))
+  (rlgl:scalef (raylib:vector3-x scale) (raylib:vector3-y scale) (raylib:vector3-z scale))
   (rlgl:translatef (- (raylib:vector3-x origin)) (- (raylib:vector3-y origin)) (- (raylib:vector3-z origin)))
   (rlgl:color4ub (raylib:color-r tint) (raylib:color-g tint) (raylib:color-b tint) (raylib:color-a tint)))
