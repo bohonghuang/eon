@@ -630,6 +630,7 @@
                                    &key
                                      (duration 1.0)
                                      (repeat nil)
+                                     (yoyop nil)
                                      (interval 0.0 interval-p)
                                      (restore-frame-p nil))
   "Return a TWEEN that sets the FRAMES as the content of IMAGE sequentially at INTERVAL or within DURATION, repeating this process REPEAT times. If RESTORE-FRAME-P is non-NIL, restore the original content of IMAGE after this process ends."
@@ -637,7 +638,7 @@
   (tween-iteration-in-place
       ((scene2d-image-content image) frames)
       :duration (if interval-p (* interval (length frames)) duration)
-      :repeat (:count (or repeat 0))
+      :repeat (:count (or repeat 0) :yoyop yoyop)
       :ease #'ute:linear-inout
       :restore-place-p restore-frame-p))
 
