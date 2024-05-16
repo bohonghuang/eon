@@ -79,12 +79,16 @@
   "Set the current screen."
   (setf (screen-manager-screen screen-manager) screen))
 
-(defun do-screen-loop (&optional (viewport (make-fit-viewport)))
-  "Use a SCREEN-MANAGER to handle the game loop and ensure that the content of the screen is drawn within VIEWPORT."
+(defun do-screen-loop (&optional (viewport (make-fit-viewport)) (background raylib:+black+))
+  "Use a SCREEN-MANAGER to handle the game loop and ensure that the content of the screen is drawn within VIEWPORT. The content outside the viewport will be cleared to BACKGROUND."
   (do-game-loop
     (let ((screen-manager *screen-manager*))
       (screen-manager-update screen-manager)
       (raylib:with-drawing
+        (typecase background
+          (raylib:color (raylib:clear-background background))
+          (function (funcall background))
+          (t (scene2d-draw-simple background)))
         (with-viewport viewport
           (screen-manager-render screen-manager))))))
 
