@@ -124,17 +124,18 @@
                 (,box (make-select-box :dimension ,dimension :orientation ,orientation . ,args)))
            (declare (ignorable ,style))
            ,(scene2d-construct-children-form
-             (etypecase children
-               (list (mapcar
-                      (lambda (child)
-                        (let ((selection (scene2d-argument-construct-form child)))
-                          (if (stringp selection)
-                              `(scene2d-construct (scene2d-label :style (select-box-style-label-style ,style)
-                                                                 :string ,selection))
-                              selection)))
-                      children))
-               (symbol children))
-             (lambda (child) `(select-box-add-child ,box ,child)))
+             children
+             (lambda (child)
+               `(select-box-add-child
+                 ,box ,(let ((selection (scene2d-argument-construct-form child)))
+                         (once-only (selection)
+                           `(etypecase ,selection
+                              (string (scene2d-construct
+                                       (scene2d-margin
+                                        :top 1.0 :bottom 1.0 :left 1.0 :right 1.0
+                                        :child (scene2d-label :style (select-box-style-label-style ,style)
+                                                              :string ,selection))))
+                              (scene2d-node ,selection)))))))
            ,box)))))
 
 (define-scene2d-default-construct-form select-box-style (label-style entry-type))
