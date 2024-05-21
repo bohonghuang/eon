@@ -30,7 +30,7 @@
                                            (:file "input"))
                               :depends-on ("basic" "construct" "focus" "scroll")))
                 :depends-on ("package" "texture" "misc" "input" "tween" "shader"))
-               (:file "particle" :depends-on ("package"))
+               (:file "particle" :depends-on ("package" "loop"))
                (:module "scene3d"
                 :components ((:file "basic")
                              (:file "particle" :depends-on ("basic")))

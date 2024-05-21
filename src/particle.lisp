@@ -56,12 +56,14 @@
 (defun particle-3d-emitter-emit (emitter count)
   "Make the EMITTER emit COUNT particles if there is enough capacity available."
   (loop :with particles :of-type (simple-array particle-3d (*)) := (particle-3d-emitter-particles emitter)
+        :with updater :of-type particle-3d-updater := (particle-3d-emitter-updater emitter)
         :for particle :across particles
         :when (>= emitted count)
           :return t
         :unless (particle-3d-livep particle)
           :do (setf (particle-3d-age particle) 0.0
                     (particle-3d-livep particle) t)
+              (funcall updater particle)
           :and :count 1 :into emitted :of-type non-negative-fixnum))
 
 (declaim (ftype (function (foreign-pointer foreign-pointer single-float) (values foreign-pointer)) %quaternion-scale-rotation)
@@ -120,11 +122,7 @@
         :and updater :of-type (function (particle-3d)) := (particle-3d-emitter-updater emitter)
         :for particle :across particles
         :do (when (particle-3d-livep particle)
-              (if (zerop (particle-3d-age particle))
-                  (progn
-                    (funcall updater particle)
-                    (incf (particle-3d-age particle) single-float-epsilon))
-                  (incf (particle-3d-age particle) (/ delta (particle-3d-lifetime particle))))
+              (incf (particle-3d-age particle) (if (zerop (particle-3d-age particle)) single-float-epsilon (/ delta (particle-3d-lifetime particle))))
               (if (> (particle-3d-age particle) 1.0)
                   (setf (particle-3d-livep particle) nil)
                   (funcall updater particle)))))
@@ -149,12 +147,13 @@
     (declare (type single-float rate-fraction))
     (lambda (&optional (delta (funcall delta)))
       (declare (type single-float delta))
-      (particle-3d-emitter-emit emitter (multiple-value-bind (count fraction) (truncate (+ (funcall rate-function delta) rate-fraction))
-                                          (declare (type non-negative-fixnum count)
-                                                   (type single-float fraction))
-                                          (setf rate-fraction fraction)
-                                          count))
-      (particle-3d-emitter-update emitter delta)
+      (game-loop-once-only (emitter)
+        (particle-3d-emitter-emit emitter (multiple-value-bind (count fraction) (truncate (+ (funcall rate-function delta) rate-fraction))
+                                            (declare (type non-negative-fixnum count)
+                                                     (type single-float fraction))
+                                            (setf rate-fraction fraction)
+                                            count))
+        (particle-3d-emitter-update emitter delta))
       (particle-3d-emitter-draw emitter renderer))))
 
 (declaim (ftype (function (t) (values function)) ensure-value-generator))
