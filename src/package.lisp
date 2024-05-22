@@ -109,6 +109,7 @@
    #:scene2d-tween-container
    #:scene2d-tween-container-manager
    #:scene2d-tween-container-speed
+   #:scene2d-rectangle
    ;; scene2d/construct.lisp
    #:scene2d-construct-form
    #:scene2d-construct
