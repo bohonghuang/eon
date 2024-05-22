@@ -79,6 +79,10 @@
   "Set the current screen."
   (setf (screen-manager-screen screen-manager) screen))
 
+(defun take-screenshot (&optional (screen-manager *screen-manager*))
+  "Capture a snapshot of the current screen and return it as a RAYLIB:IMAGE."
+  (load-asset 'raylib:image (raylib:render-texture-texture (screen-manager-render-texture screen-manager))))
+
 (defun do-screen-loop (&optional (viewport (make-fit-viewport)) (background raylib:+black+))
   "Use a SCREEN-MANAGER to handle the game loop and ensure that the content of the screen is drawn within VIEWPORT. The content outside the viewport will be cleared to BACKGROUND."
   (let ((screen-manager *screen-manager*))
