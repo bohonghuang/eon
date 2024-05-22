@@ -173,6 +173,8 @@
 
 (define-scene2d-default-construct-form scene2d-tween-container ())
 
+(define-scene2d-default-construct-form scene2d-rectangle (size))
+
 (define-scene2d-default-construct-form n-patch (texture body layout))
 
 (define-scene2d-default-rectangle-argument-form :body)

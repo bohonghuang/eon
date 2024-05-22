@@ -845,3 +845,15 @@
     (game-loop-once-only (tween-manager)
       (ute:update (* (game-loop-delta-time) (scene2d-tween-container-speed container)) tween-manager)))
   (call-next-method))
+
+(defstruct (scene2d-rectangle (:include scene2d-layout)))
+
+(defmethod scene2d-draw ((rectangle scene2d-rectangle) position origin scale rotation tint)
+  (let ((size (scene2d-rectangle-size rectangle)))
+    (clet ((rectangle (foreign-alloca '(:struct raylib:rectangle))))
+      (setf (-> rectangle raylib:x) (raylib:vector2-x position)
+            (-> rectangle raylib:y) (raylib:vector2-y position)
+            (-> rectangle raylib:width) (* (raylib:vector2-x size) (raylib:vector2-x scale))
+            (-> rectangle raylib:height) (* (raylib:vector2-y size) (raylib:vector2-y scale)))
+      (raylib:%draw-rectangle-pro rectangle (& origin) rotation (& tint))))
+  (call-next-method))
