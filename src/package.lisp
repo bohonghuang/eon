@@ -265,6 +265,7 @@
    #:with-screen-manager-mode
    #:screen-manager
    #:current-screen
+   #:take-screenshot
    #:do-screen-loop
    #:screen-render
    #:define-simple-shader-screen-transition

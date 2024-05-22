@@ -269,6 +269,22 @@
                                                      element-type))))
     (throw 'load-asset (register-unshareable-asset image (cobj:pointer-cobject (& image) 'raylib:image)))))
 
+(defmethod load-asset :around ((asset-type (eql 'raylib:image)) (texture raylib:texture) &key)
+  (declare (ignore asset-type texture))
+  (catch 'load-asset (call-next-method)))
+
+(defmethod load-asset ((asset-type (eql 'raylib:image)) (texture raylib:texture) &key)
+  (let ((image (raylib:load-image-from-texture texture)))
+    (throw 'load-asset (register-unshareable-asset image (cobj:pointer-cobject (& image) 'raylib:image)))))
+
+(defmethod load-asset :around ((asset-type (eql 'raylib:image)) (image raylib:image) &key region)
+  (declare (ignore asset-type image region))
+  (catch 'load-asset (call-next-method)))
+
+(defmethod load-asset ((asset-type (eql 'raylib:image)) (image raylib:image) &key region)
+  (let ((image (if region (raylib:image-from-image image region) (raylib:image-copy image))))
+    (throw 'load-asset (register-unshareable-asset image (cobj:pointer-cobject (& image) 'raylib:image)))))
+
 (defmethod unload-asset :around ((image raylib:image))
   (if (asset-loaded-p image)
       (call-next-method)
