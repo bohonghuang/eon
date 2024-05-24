@@ -99,6 +99,14 @@
 
 (define-scene2d-default-construct-form scene2d-margin (child left right top bottom))
 
+(defmethod scene2d-construct-form :around ((type (eql 'scene2d-margin))
+                                           &rest args
+                                           &key child all left right top bottom
+                                           &allow-other-keys)
+  (declare (ignore child left right top bottom))
+  (remove-from-plistf args :all)
+  (apply #'call-next-method type (if all (list* :left all :right all :top all :bottom all args) args)))
+
 (define-scene2d-default-construct-form scene2d-cell (child size alignment))
 
 (define-scene2d-default-construct-form scene2d-max-cell (child size alignment))
