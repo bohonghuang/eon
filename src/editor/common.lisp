@@ -16,7 +16,7 @@
     (let ((step 1))
       (async
         (do-non-nil (key (with-popped-prompt (format nil "~D (±~D)" value step)
-                           (await (promise-pressed-key))))
+                           (await (promise-pressed-controller-button))))
           (case key
             ((:left :x) (setf step (max (truncate step 10) 1)))
             ((:right :y) (setf step (min (* step 10) 100)))
@@ -34,7 +34,7 @@
     (let ((step 1.0))
       (async
         (do-non-nil (key (with-popped-prompt (format nil "~,2F (±~,2F)" value step)
-                           (await (promise-pressed-key))))
+                           (await (promise-pressed-controller-button))))
           (case key
             ((:left :x) (setf step (max (/ step 10.0) 0.01)))
             ((:right :y) (setf step (min (* step 10.0) 100.0)))
@@ -51,7 +51,7 @@
         (do-non-nil (key (with-popped-prompt (format nil "~A: ~,2F ~A: ~,2F (±~,2F)"
                                                      (first names) (first vector2)
                                                      (second names) (second vector2) step)
-                           (await (promise-pressed-key))))
+                           (await (promise-pressed-controller-button))))
           (case key
             (:left (decf (first vector2) step))
             (:right (incf (first vector2) step))
@@ -72,13 +72,13 @@
                                                      (second names) (second rectangle)
                                                      (third names) (third rectangle)
                                                      (fourth names) (fourth rectangle) step)
-                           (await (promise-pressed-key))))
+                           (await (promise-pressed-controller-button))))
           (case key
             (:y (setf step (min (* step 10.0) 100.0)))
             (:x (setf step (max (/ step 10.0) 0.01)))
             (:a (return rectangle))
             (:b (return nil))
-            (t (if (key-down-p :l3)
+            (t (if (controller-button-down-p :l3)
                    (case key
                      (:left (decf (third rectangle) step))
                      (:right (incf (third rectangle) step))

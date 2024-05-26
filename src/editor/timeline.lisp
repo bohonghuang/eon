@@ -23,7 +23,7 @@
       (when (and (member type '(:sequence :parallel)) args)
         (push (cons 'unwrap (lambda (form) (declare (ignore form)) (async (first args)))) operations))
       (nreversef operations)
-      (if (or (= (length operations) 1) (not (key-down-p :l2)))
+      (if (or (= (length operations) 1) (not (controller-button-down-p :l2)))
           (funcall (cdr (first operations)) (cons type args))
           (async
             (await (funcall (or (assoc-value operations (await (promise-selection
@@ -80,7 +80,7 @@
   (async
     (or (await
          (cond
-           ((key-down-p :r3) (edit-expression value))
+           ((controller-button-down-p :r3) (edit-expression value))
            ((integerp value) (edit-integer value))
            ((floatp value) (edit-float value))
            ((stringp value) (promise-input-text "Enter a string." value))
@@ -198,13 +198,13 @@
                        (result))
             (ecase selection
               (:places
-               (setf places (if (key-down-p :r3)
+               (setf places (if (controller-button-down-p :r3)
                                 (await (ensure-combined-properties (await (edit-expression))))
                                 (with-sent-preview-function ((tween-debug-container (result)) places)
                                   (await (edit-children #'edit-expression places))))
                      targets (adjust-targets places targets)))
               (:targets
-               (if (key-down-p :l3)
+               (if (controller-button-down-p :l3)
                    (setf (lastcar targets) (place-values))
                    (setf targets (with-sent-preview-function ((tween-debug-container (result)) targets)
                                    (await (edit-children (lambda (children)
@@ -313,11 +313,11 @@
              (scene2d-layout preview-container)))
       (with-preview-function #'preview
         (let ((hook (add-game-loop-hook (lambda ()
-                                          (when (key-down-p :r3)
+                                          (when (controller-button-down-p :r3)
                                             (cond
-                                              ((key-up-p :l2)
+                                              ((controller-button-up-p :l2)
                                                (ute:kill preview-tween))
-                                              ((key-down-p :l2)
+                                              ((controller-button-down-p :l2)
                                                (unless (ute:startedp preview-tween)
                                                  (when (second timeline)
                                                    (ute:start (setf preview-tween (eval-timeline timeline))))))))

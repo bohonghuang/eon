@@ -142,7 +142,7 @@
 (define-scene2d-default-construct-form select-box-style (label-style entry-type))
 
 (defun select-box-promise-index (box &optional (initial-index 0) (handler (constantly nil)))
-  "Allow the user to select a child of BOX using directional keys and return a PROMISE:PROMISE of the selected child's index. The child with INITIAL-INDEX will be selected by default. HANDLER is called before and after the user presses a key (moves the cursor or makes a selection). Before the key is pressed, it is called with FOCUS-MANAGER as the only parameter. After the key is pressed, it is called with FOCUS-MANAGER and the KEY pressed by the user as parameters, then if HANDLER returns a non-NIL value, it will be used to fulfill the PROMISE:PROMISE of this function, thereby terminating the user's selection."
+  "Allow the user to select a child of BOX using directional buttons and return a PROMISE:PROMISE of the selected child's index. The child with INITIAL-INDEX will be selected by default. HANDLER is called before and after the user presses a button (moves the cursor or makes a selection). Before the button is pressed, it is called with FOCUS-MANAGER as the only parameter. After the button is pressed, it is called with FOCUS-MANAGER and the button pressed by the user as parameters, then if HANDLER returns a non-NIL value, it will be used to fulfill the PROMISE:PROMISE of this function, thereby terminating the user's selection."
   (let* ((entries (select-box-entries box))
          (initial-focused (nth initial-index entries))
          (manager (make-scene2d-focus-manager :focusables (cons initial-focused (remove initial-focused entries)))))
@@ -151,17 +151,17 @@
     (async
       (loop
         (funcall handler manager)
-        (let ((key (await (promise-pressed-key))))
-          (case key
+        (let ((button (await (promise-pressed-controller-button))))
+          (case button
             ((:up :down :left :right)
              (setf (select-box-entry-focused-p (scene2d-focus-manager-focused manager)) nil)
-             (scene2d-focus-manager-handle-key manager key)))
-          (let ((result (funcall handler manager key)))
+             (scene2d-focus-manager-handle-input manager button)))
+          (let ((result (funcall handler manager button)))
             (etypecase result
               (non-negative-fixnum (return result))
               ((eql t) (return nil))
               ((eql nil)
-               (case key
+               (case button
                  ((:a) (return (position (scene2d-focus-manager-focused manager) entries)))
                  ((:b) (return nil))))))
           (setf (select-box-entry-focused-p (scene2d-focus-manager-focused manager)) t))))))
@@ -189,15 +189,15 @@
         :finally (return box)))
 
 (defun swappable-select-box-promise-index (box &optional (initial-index 0) (handler (constantly nil)))
-  "Like SELECT-BOX-PROMISE-INDEX, but allow the user to swap the children of two BOXes using the SELECT key. When the user confirms the swap, the value of the fulfilled PROMISE:PROMISE will be a CONS where the CAR and CDR represent the indices of the two children to be swapped."
+  "Like SELECT-BOX-PROMISE-INDEX, but allow the user to swap the children of two BOXes using the SELECT button. When the user confirms the swap, the value of the fulfilled PROMISE:PROMISE will be a CONS where the CAR and CDR represent the indices of the two children to be swapped."
   (let ((entries (select-box-entries box))
         (swap-entries (mapcar #'select-box-entry-content (select-box-entries box)))
         (swap-index nil))
     (let* ((promise (promise:make))
-           (handler (lambda (manager &optional key)
-                      (if key
+           (handler (lambda (manager &optional button)
+                      (if button
                           (progn
-                            (case key
+                            (case button
                               (:select (let ((index (position (scene2d-focus-manager-focused manager) entries)))
                                          (when swap-index
                                            (setf (select-box-entry-focused-p (nth swap-index swap-entries)) nil)
@@ -205,7 +205,7 @@
                                          (setf swap-index (if (eql index swap-index) nil index))
                                          (when swap-index
                                            (setf (select-box-entry-focused-p (nth swap-index swap-entries)) t)))))
-                            (funcall handler manager key))
+                            (funcall handler manager button))
                           (funcall handler manager)))))
       (async
         (loop

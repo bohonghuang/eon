@@ -50,7 +50,7 @@
                                                              (plist-props-alist args (type-construct-arguments type)))))
                             (cons type args))
         (with-sent-preview-function ((cons type args) (getf args argument))
-          (if (key-down-p :l3) (remf args argument)
+          (if (controller-button-down-p :l3) (remf args argument)
               (with-specified-value (value (await (apply #'edit-construct-argument type argument
                                                          (with-specified-value (arg (getf args argument :unspecified))
                                                            (list arg))))
@@ -84,7 +84,7 @@
                                 (if (symbolp (car child)) child (first child)))))
               operations))
       (nreversef operations)
-      (if (or (= (length operations) 1) (not (key-down-p :l2)))
+      (if (or (= (length operations) 1) (not (controller-button-down-p :l2)))
           (funcall (cdr (first operations)) (cons type args))
           (async
             (await (funcall (or (assoc-value operations (await (promise-selection
@@ -108,7 +108,7 @@
         nil)))
 
 (defmethod edit-construct-argument :around (type name &optional (value nil valuep))
-  (when (key-down-p :r3) (setf value (list 'scene2d-construct nil)))
+  (when (controller-button-down-p :r3) (setf value (list 'scene2d-construct nil)))
   (if (typep value '(cons (eql scene2d-construct) (cons symbol null)))
       (async
         (let ((symbol (await (edit-expression (second value)))))
@@ -344,7 +344,7 @@
                (setf children (nbutlast children)))))
           (t
            (if-let ((index (position selection children)))
-             (if (and (key-down-p :l3) allow-modification-p)
+             (if (and (controller-button-down-p :l3) allow-modification-p)
                  (deletef children selection)
                  (with-sent-preview-function (children (nth index children))
                    (setf (nth index children) (await (funcall edit-function selection)))))

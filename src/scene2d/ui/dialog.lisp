@@ -158,7 +158,7 @@
                  (unless accelerate-text-p
                    (add-game-loop-hook
                     (lambda ()
-                      (when (or (key-pressed-p :a) (key-pressed-p :b))
+                      (when (or (controller-button-pressed-p :a) (controller-button-pressed-p :b))
                         (setf accelerate-text-p t)))
                     :after (lambda (result) (not (or result display-finished-p)))))
                  (async
@@ -215,7 +215,7 @@
              (setf (raylib:vector2-y indicator-position) indicator-y)))
          :before #'not))
       (async
-        (loop :until (case (await (promise-pressed-key)) ((:a :b) (setf confirmedp t))))
+        (loop :until (case (await (promise-pressed-controller-button)) ((:a :b) (setf confirmedp t))))
         (raylib:copy-color raylib:+blank+ (scene2d-node-color indicator))))))
 
 (defun dialog-box-promise-display-confirm (box &optional (last-confirm t))
