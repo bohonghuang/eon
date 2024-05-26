@@ -155,13 +155,15 @@
           (case key
             ((:up :down :left :right)
              (setf (select-box-entry-focused-p (scene2d-focus-manager-focused manager)) nil)
-             (scene2d-focus-manager-handle-key manager key))
-            ((:a) (return (position (scene2d-focus-manager-focused manager) entries)))
-            ((:b) (return nil)))
-          (when-let ((result (funcall handler manager key)))
+             (scene2d-focus-manager-handle-key manager key)))
+          (let ((result (funcall handler manager key)))
             (etypecase result
+              (non-negative-fixnum (return result))
               ((eql t) (return nil))
-              (non-negative-fixnum (return result))))
+              ((eql nil)
+               (case key
+                 ((:a) (return (position (scene2d-focus-manager-focused manager) entries)))
+                 ((:b) (return nil))))))
           (setf (select-box-entry-focused-p (scene2d-focus-manager-focused manager)) t))))))
 
 (defstruct (table-select-box (:include select-box))
