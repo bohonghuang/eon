@@ -3,7 +3,7 @@
 (defmacro with-editor-setup (draw &body body)
   `(let ((*debug-window-group* (scene2d-construct (scene2d-group))))
      (flet ((,draw ()
-              (unless (key-down-p :l2)
+              (unless (controller-button-down-p :l2)
                 (scene2d-draw-simple *debug-window-group*))))
        . ,body)))
 

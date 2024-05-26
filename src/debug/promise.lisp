@@ -15,8 +15,8 @@
           (when-let ((index (await (funcall promise-index select-box
                                             (or (and initial-selection-p (position initial-selection selections)) 0)
                                             (let ((initializedp nil))
-                                              (lambda (manager &optional key)
-                                                (unless key
+                                              (lambda (manager &optional button)
+                                                (unless button
                                                   (let ((function (curry #'scene2d-scroll-region-scroll-to-focusable
                                                                          region (scene2d-focus-manager-focused manager))))
                                                     (if initializedp
@@ -56,7 +56,7 @@
     (with-popped-window ((margin-all (scene2d-construct (scene2d-label :string text))) (:center :center))
       (typecase confirm
         (real (await (promise-sleep confirm)))
-        (boolean (when confirm (await (promise-pressed-key)))))
+        (boolean (when confirm (await (promise-pressed-controller-button)))))
       nil)))
 
 (defmacro do-non-nil ((var next &optional result) &body body)
@@ -78,7 +78,7 @@
                    (let ((path-list (raylib:make-file-path-list)))
                      (add-game-loop-hook
                       (lambda ()
-                        (if (key-pressed-p :b) (succeed nil)
+                        (if (controller-button-pressed-p :b) (succeed nil)
                             (progn
                               (raylib:%load-dropped-files (& path-list))
                               (unwind-protect

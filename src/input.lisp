@@ -1,5 +1,9 @@
 (in-package #:eon)
 
+(define-constant +controller-buttons+
+    '(:a :b :x :y :start :select :l1 :r1 :l2 :r2 :l3 :r3 :up :down :left :right)
+  :test #'equal)
+
 (defparameter *keyboard-key-mappings*
   (mapcar (lambda (pair)
             (cons (car pair) (foreign-enum-value 'raylib:keyboard-key (cdr pair))))
@@ -19,63 +23,63 @@
             (:down . :down)
             (:left . :left)
             (:right . :right)))
-  "An association list used to represent the mapping of gamepad buttons to keyboard keys.")
+  "An association list used to represent the mapping of controller buttons to RAYLIB:KEYBOARD-KEYs.")
 
-(defun key-keyboard (key)
-  "Get the keyboard key corresponding to KEY."
-  (declare (type keyword key))
-  (or (assoc-value *keyboard-key-mappings* key)
-      (error "Unknown input key: ~S" key)))
+(defun controller-button-keyboard-key (controller-button)
+  "Get the RAYLIB:KEYBOARD-KEY corresponding to CONTROLLER-BUTTON."
+  (declare (type keyword controller-button))
+  (or (assoc-value *keyboard-key-mappings* controller-button)
+      (error "Unknown controller button: ~S" controller-button)))
 
-(defun keyboard-key (key)
-  "Get the key corresponding to keyboard KEY."
-  (declare (type fixnum key))
-  (rassoc-value *keyboard-key-mappings* key))
+(defun keyboard-key-controller-button (keyboard-key)
+  "Get the controller button corresponding to KEYBOARD-KEY."
+  (declare (type fixnum keyboard-key))
+  (rassoc-value *keyboard-key-mappings* keyboard-key))
 
-(defun key-pressed-p (key)
-  "Return whether KEY has just been pressed."
-  (raylib:is-key-pressed (key-keyboard key)))
+(defun controller-button-pressed-p (button)
+  "Return whether BUTTON has just been pressed."
+  (raylib:is-key-pressed (controller-button-keyboard-key button)))
 
-(defun key-down-p (key)
-  "Return whether KEY is being pressed."
-  (raylib:is-key-down (key-keyboard key)))
+(defun controller-button-down-p (button)
+  "Return whether BUTTON is being pressed."
+  (raylib:is-key-down (controller-button-keyboard-key button)))
 
-(defun key-released-p (key)
-  "Return whether KEY has just been released."
-  (raylib:is-key-released (key-keyboard key)))
+(defun controller-button-released-p (button)
+  "Return whether BUTTON has just been released."
+  (raylib:is-key-released (controller-button-keyboard-key button)))
 
-(defun key-up-p (key)
-  "Return whether KEY is not being pressed."
-  (raylib:is-key-up (key-keyboard key)))
+(defun controller-button-up-p (button)
+  "Return whether BUTTON is not being pressed."
+  (raylib:is-key-up (controller-button-keyboard-key button)))
 
 (defvar *previous-input-query-function* nil)
 
-(defconstant +key-queue-size-limit+ 1)
+(defconstant +controller-button-queue-size-limit+ 1)
 
-(defvar *key-queue* nil
-  "A queue of pressed keys. When a key is appended, it is considered to be pressed and returned by PRESSED-KEY or PROMISE-PRESSED-KEY.")
+(defvar *controller-button-queue* nil
+  "A queue of pressed keys. When a key is appended, it is considered to be pressed and returned by PRESSED-CONTROLLER-BUTTON or PROMISE-PRESSED-CONTROLLER-BUTTON.")
 
-(defparameter *key-repeat-enabled-p* t)
+(defparameter *controller-button-repeat-enabled-p* t)
 
-(defun pressed-key ()
+(defun pressed-controller-button ()
   (let ((keycode (raylib:get-key-pressed)))
-    (if-let ((key (keyboard-key keycode)))
+    (if-let ((button (keyboard-key-controller-button keycode)))
       (let ((repeat-time (+ (game-loop-time) 0.5d0)))
-        (when *key-repeat-enabled-p*
+        (when *controller-button-repeat-enabled-p*
           (add-game-loop-hook
            (lambda ()
              (if (> (game-loop-time) repeat-time)
                  (async
-                   (loop :while (and *key-repeat-enabled-p* (key-down-p key))
-                         :when (< (length *key-queue*) +key-queue-size-limit+)
-                           :do (nconcf *key-queue* (list key))
+                   (loop :while (and *controller-button-repeat-enabled-p* (controller-button-down-p button))
+                         :when (< (length *controller-button-queue*) +controller-button-queue-size-limit+)
+                           :do (nconcf *controller-button-queue* (list button))
                          :do (await (promise-sleep (/ 5.0 60.0)))
-                         :finally (setf *key-queue* nil)))
-                 (key-up-p key)))
+                         :finally (setf *controller-button-queue* nil)))
+                 (controller-button-up-p button)))
            :before #'not))
-        (setf *previous-input-query-function* #'pressed-key)
-        (return-from pressed-key key))
-      (pop *key-queue*))))
+        (setf *previous-input-query-function* #'pressed-controller-button)
+        (return-from pressed-controller-button button))
+      (pop *controller-button-queue*))))
 
 (defun pressed-char ()
   "Get the recently pressed character, returning NIL if none was pressed."
@@ -107,11 +111,11 @@
          (succeed char)))
      :before #'not)))
 
-(defun promise-pressed-key ()
+(defun promise-pressed-controller-button ()
   "Wait for a key to be pressed and return a PROMISE:PROMISE of it."
   (promise:with-promise (succeed)
     (add-game-loop-hook
      (lambda ()
-       (when-let ((key (pressed-key)))
+       (when-let ((key (pressed-controller-button)))
          (succeed key)))
      :before #'not)))

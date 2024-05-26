@@ -37,7 +37,7 @@
                                                                  (plist-props-alist args (type-construct-arguments type)))))
                                 (list* type source args))
             (with-sent-preview-function ((list* type source args) (getf-args argument))
-              (if (key-down-p :l3) (remf-args argument)
+              (if (controller-button-down-p :l3) (remf-args argument)
                   (with-specified-value (value (await (apply #'edit-asset-argument type argument
                                                              (with-specified-value (arg (getf-args argument :unspecified))
                                                                (list arg))))

@@ -20,8 +20,8 @@
   "Get the currently focused SCENE2D-FOCUSABLE."
   (first (scene2d-focus-manager-focusables manager)))
 
-(defun scene2d-focus-manager-handle-key (manager key)
-  "Make the MANAGER change the currently focused SCENE2D-FOCUSABLE based on the KEY (which can be :LEFT, :RIGHT, :UP, or :DOWN)."
+(defun scene2d-focus-manager-handle-input (manager button)
+  "Make the MANAGER change the currently focused SCENE2D-FOCUSABLE based on the BUTTON (which can be :LEFT, :RIGHT, :UP, or :DOWN)."
   (with-accessors ((focusables scene2d-focus-manager-focusables))
       manager
     (let* ((focused (first focusables))
@@ -41,7 +41,7 @@
                      (raylib:vector2-x raylib:vector2-y))
                    (subst-swap down-impl
                      (raylib:vector2-x raylib:vector2-y))
-                   `(ecase key
+                   `(ecase button
                       (:up . ,up-impl)
                       (:down . ,down-impl)
                       (:left . ,left-impl)

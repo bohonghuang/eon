@@ -35,15 +35,13 @@
    #:promise-tween
    ;; input.lisp
    #:*keyboard-key-mappings*
-   #:key-keyboard
-   #:keyboard-key
-   #:key-pressed-p
-   #:key-down-p
-   #:key-released-p
-   #:key-up-p
-   #:pressed-key
-   #:promise-pressed-key
-   #:*key-queue*
+   #:controller-button-pressed-p
+   #:controller-button-down-p
+   #:controller-button-released-p
+   #:controller-button-up-p
+   #:pressed-controller-button
+   #:promise-pressed-controller-button
+   #:*controller-button-queue*
    ;; texture.lisp
    #:texture-region
    #:make-texture-region
@@ -122,7 +120,7 @@
    #:scene2d-focus-manager
    #:make-scene2d-focus-manager
    #:scene2d-focus-manager-focused
-   #:scene2d-focus-manager-handle-key
+   #:scene2d-focus-manager-handle-input
    ;; scene2d/scroll.lisp
    #:scene2d-scroll-region
    #:scene2d-scroll-region-scroll-to-focusable
