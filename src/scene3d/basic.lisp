@@ -204,28 +204,18 @@
                       (radian-degree (-> euler raylib:z))))
           (original-scale-x (raylib:vector3-x scale))
           (original-scale-y (raylib:vector3-y scale))
-          (original-position-x (raylib:vector3-x position))
-          (original-position-y (raylib:vector3-y position))
           (original-origin-x (raylib:vector3-x origin))
           (original-origin-y (raylib:vector3-y origin)))
-      (setf (raylib:vector3-y scale) (* (texture-region-height texture-region) (raylib:vector3-y scale))
-            (raylib:vector3-x scale) (* (texture-region-height texture-region) (raylib:vector3-x scale))
-            (raylib:vector3-x position) (- (raylib:vector3-x position)
-                                           (* (raylib:vector3-x scale)
-                                              (- (/ (raylib:vector3-x origin) (texture-region-width texture-region)) (/ 2.0))))
-            (raylib:vector3-y position) (- (raylib:vector3-y position)
-                                           (* (raylib:vector3-y scale)
-                                              (- (/ 2.0) (/ (raylib:vector3-y origin) (texture-region-height texture-region)))))
-            (raylib:vector3-x origin) (- (/ (* (raylib:vector3-x origin) 2.0) (texture-region-width texture-region)) 1.0)
-            (raylib:vector3-y origin) (- 1.0 (/ (* (raylib:vector3-y origin) 2.0) (texture-region-height texture-region))))
+      (setf (raylib:vector3-x origin) (* (raylib:vector3-x origin) (raylib:vector3-x scale))
+            (raylib:vector3-y origin) (* (raylib:vector3-y origin) (raylib:vector3-y scale))
+            (raylib:vector3-x scale) (* (texture-region-width texture-region) (raylib:vector3-x scale))
+            (raylib:vector3-y scale) (* (texture-region-height texture-region) (raylib:vector3-y scale)))
       (raylib:%draw-billboard-pro (& *scene3d-camera*) (& (texture-region-texture texture-region))
                                   (& (texture-region-region texture-region)) (& position)
                                   (& (scene3d-billboard-up billboard)) (& scale)
                                   (& origin) rotation (& tint))
       (setf (raylib:vector3-x scale) original-scale-x
             (raylib:vector3-y scale) original-scale-y
-            (raylib:vector3-x position) original-position-x
-            (raylib:vector3-y position) original-position-y
             (raylib:vector3-x origin) original-origin-x
             (raylib:vector3-y origin) original-origin-y))))
 
