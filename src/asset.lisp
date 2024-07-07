@@ -202,25 +202,15 @@
 
 (defmethod load-asset ((asset-type (eql 'raylib::model-animations)) (path pathname) &key)
   (let* ((cint (make-cint))
-         (cpointer (raylib:load-model-animations (namestring path) cint))
-         (cobject (cobj:manage-cobject
-                   (make-model-animations
-                    :pointer (cobj:cobject-pointer cpointer)
-                    :element-type (cobj::cpointer-element-type cpointer)
-                    :dimensions (list (cint-value cint))))))
-    (throw 'load-asset (register-unshareable-asset cobject (copy-model-animations cobject)))))
-
-(defmethod load-asset :around ((asset-type (eql 'raylib::model-animations)) (path pathname) &key)
-  (declare (ignore asset-type path))
-  (catch 'load-asset (call-next-method)))
+         (cpointer (raylib:load-model-animations (namestring path) cint)))
+    (cobj:manage-cobject
+     (make-model-animations
+      :pointer (cobj:cobject-pointer cpointer)
+      :element-type (cobj::cpointer-element-type cpointer)
+      :dimensions (list (cint-value cint))))))
 
 (defmethod unload-asset ((animations raylib::model-animations))
-  (let ((animations (deregister-unshareable-asset animations #'cobj:cobject-eq)))
-    (throw 'unload-asset (raylib:%unload-model-animations (cobj:unmanage-cobject animations) (cobj:clength animations)))))
-
-(defmethod unload-asset :around ((animations raylib::model-animations))
-  (with-registered-unshareable-asset (animations #'cobj:cobject-eq)
-    (catch 'unload-asset (call-next-method))))
+  (raylib:%unload-model-animations (cobj:unmanage-cobject animations) (cobj:clength animations)))
 
 (defmethod load-asset ((asset-type (eql 'raylib:font)) (path pathname) &key)
   (raylib:load-font (namestring path)))
