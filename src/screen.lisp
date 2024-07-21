@@ -107,7 +107,8 @@
 (deftype screen-transition () 'screen-manager-update-function)
 
 (defgeneric ensure-screen-transition (object)
-  (:method ((function function)) function))
+  (:method ((function function)) (values function (ute:timeline (:sequence))))
+  (:method ((null null)) (ensure-screen-transition #'values)))
 
 (defvar *shader-screen-transition-shader-uniforms*)
 
