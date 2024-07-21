@@ -167,7 +167,8 @@
 
 (deftype particle-3d-value-generator (type)
   "A function that accepts a PARTICLE-3D as the parameter and returns a random value."
-  `(function (particle-3d) (values ,type)))
+  #-ecl `(function (particle-3d) (values ,type))
+  #+ecl 'function)
 
 (deftype particle-3d-value-or-generator (type)
   `(or (particle-3d-value-generator ,type) ,type))
@@ -255,10 +256,10 @@
                                         (lifetime 1.0))
   "A PARTICLE-3D-UPDATER that ensures particles always move on a plane facing CAMERA. The remaining parameters can be either a single value or a PARTICLE-3D-VALUE-GENERATOR of the value type. The origin of this plane will be set at ORIGIN in 3D space, with the upward direction defined by UP. The position, velocity, acceleration, and lifetime of the particle on the plane will be generated respectively by POSITION, VELOCITY, ACCELERATION, and LIFETIME."
   (with-value-generators (acceleration velocity origin position up camera lifetime)
-    (declare (type (function (particle-3d) (values single-float)) lifetime)
-             (type (function (particle-3d) (values raylib:camera)) camera)
-             (type (function (particle-3d) (values raylib:vector3)) origin up)
-             (type (function (particle-3d) (values raylib:vector2)) position velocity acceleration))
+    (declare (type (particle-3d-value-generator single-float) lifetime)
+             (type (particle-3d-value-generator raylib:camera) camera)
+             (type (particle-3d-value-generator raylib:vector3) origin up)
+             (type (particle-3d-value-generator raylib:vector2) position velocity acceleration))
     (lambda (particle)
       (if (zerop (particle-3d-age particle))
           (let ((camera (funcall camera particle))
