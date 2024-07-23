@@ -203,14 +203,13 @@
 (defmethod load-asset ((asset-type (eql 'raylib::model-animations)) (path pathname) &key)
   (let* ((cint (make-cint))
          (cpointer (raylib:load-model-animations (namestring path) cint)))
-    (cobj:manage-cobject
-     (make-model-animations
-      :pointer (cobj:cobject-pointer cpointer)
-      :element-type (cobj::cpointer-element-type cpointer)
-      :dimensions (list (cint-value cint))))))
+    (make-model-animations
+     :pointer (cobj:cobject-pointer cpointer)
+     :element-type (cobj::cpointer-element-type cpointer)
+     :dimensions (list (cint-value cint)))))
 
 (defmethod unload-asset ((animations raylib::model-animations))
-  (raylib:%unload-model-animations (cobj:unmanage-cobject animations) (cobj:clength animations)))
+  (raylib:unload-model-animations animations (cobj:clength animations)))
 
 (defmethod load-asset ((asset-type (eql 'raylib:font)) (path pathname) &key)
   (raylib:load-font (namestring path)))
@@ -251,12 +250,7 @@
 (defmethod load-asset ((asset-type (eql 'raylib:image)) (source null) &key width height (format :uncompressed-r8g8b8a8))
   (let* ((element-type (list 'unsigned-byte (* 8 (raylib:get-pixel-data-size 1 1 (foreign-enum-value 'raylib:pixel-format format)))))
          (image (raylib:make-image :width width :height height :format (foreign-enum-value 'raylib:pixel-format format)
-                                   :mipmaps 1 :data (cobj:pointer-cpointer
-                                                     (cobj:unmanage-cobject
-                                                      (cobj:make-carray
-                                                       (* width height)
-                                                       :element-type element-type))
-                                                     element-type))))
+                                   :mipmaps 1 :data (cobj:with-leaky-allocator (cobj:make-carray (* width height) :element-type element-type)))))
     (throw 'load-asset (register-unshareable-asset image (cobj:pointer-cobject (& image) 'raylib:image)))))
 
 (defmethod load-asset :around ((asset-type (eql 'raylib:image)) (texture raylib:texture) &key)
