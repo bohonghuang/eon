@@ -27,7 +27,8 @@
                              (:module "ui"
                               :components ((:file "dialog")
                                            (:file "select")
-                                           (:file "input"))
+                                           (:file "input")
+                                           (:file "arrow"))
                               :depends-on ("basic" "construct" "focus" "scroll")))
                 :depends-on ("package" "texture" "misc" "input" "tween" "shader"))
                (:file "particle" :depends-on ("package" "loop"))
