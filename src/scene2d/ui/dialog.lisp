@@ -105,13 +105,13 @@
 
 (defstruct dialog-box-style
   "A structure describing the style of DIALOG-BOX."
-  (dialog-box-text-style (make-dialog-box-text-style) :type dialog-box-text-style)
+  (text-style (make-dialog-box-text-style) :type dialog-box-text-style)
   (indicator (load-asset 'raylib:texture +dialog-box-default-indicator-texture+ :format :png)))
 
 (defun make-dialog-box (&rest args &key (string "") (style (make-dialog-box-style)) (size (raylib:make-vector2 :x 256.0 :y 30.0)) &allow-other-keys)
   (remove-from-plistf args :string :style :size)
   (let ((dialog-box-text (make-dialog-box-text :position (raylib:make-vector2 :x 0.0 :y 0.0) :size (raylib:copy-vector2 size)
-                                               :string string :style (dialog-box-style-dialog-box-text-style style))))
+                                               :string string :style (dialog-box-style-text-style style))))
     (multiple-value-bind (group table)
         (scene2d-construct (scene2d-group :children ((scene2d-scroll-region :name dialog-box-region :child dialog-box-text :size (raylib:copy-vector2 size))
                                                      (scene2d-cell :alignment (:start :end)
@@ -123,7 +123,7 @@
 
 (define-scene2d-default-construct-form dialog-box (string style size))
 
-(define-scene2d-default-construct-form dialog-box-style (dialog-box-text-style indicator))
+(define-scene2d-default-construct-form dialog-box-style (text-style indicator))
 
 (defvar *dialog-box*)
 

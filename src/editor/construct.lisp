@@ -364,12 +364,6 @@
                  (await (edit-float value)))
                (specified-value value valuep)))))
 
-(defmethod edit-construct-argument (type (name (eql :dialog-box-text-style)) &optional (value (list 'dialog-box-text-style)))
-  (with-received-preview-function
-    (async
-      (with-sent-preview-function ()
-        (await (edit-construct value))))))
-
 (defmethod edit-construct-argument (type (name (eql :indicator)) &optional (value nil valuep))
   (async
     (or (await (edit-asset value '(raylib:texture)))
