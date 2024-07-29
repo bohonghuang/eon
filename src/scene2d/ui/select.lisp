@@ -63,7 +63,6 @@
 
 (defstruct select-box-style
   "A structure describing the style of SELECT-BOX-STYLE. The entry type is a SYMBOL or FUNCTION that, when invoked by a newly added child of the SELECT-BOX, returns a wrapper object of type SELECT-BOX-ENTRY specializing method (SETF SELECT-BOX-ENTRY-FOCUSED-P)."
-  (label-style (make-scene2d-label-style) :type scene2d-label-style)
   (entry-type 'select-box-border-entry :type (or symbol function)))
 
 (defstruct (select-box (:include scene2d-table))
@@ -95,6 +94,16 @@
 (defun select-box-children (box)
   "Get the children of BOX."
   (mapcar #'select-box-entry-content (select-box-entries box)))
+
+(defstruct (constructed-select-box-style (:include select-box-style))
+  (label-style (make-scene2d-label-style) :type scene2d-label-style))
+
+(defmethod scene2d-construct-form ((type (eql 'select-box-style)) &rest args &key label-style entry-type &allow-other-keys)
+  (declare (ignore label-style entry-type))
+  (when-let ((child (getf args :child)))
+    (remove-from-plistf args :child)
+    (setf args (nconc `(:content ,child) args)))
+  `(make-constructed-select-box-style ,@args))
 
 (defmethod scene2d-construct-form ((type (eql 'select-box))
                                    &rest
@@ -134,12 +143,10 @@
                               (string (scene2d-construct
                                        (scene2d-margin
                                         :top 1.0 :bottom 1.0 :left 1.0 :right 1.0
-                                        :child (scene2d-label :style (select-box-style-label-style ,style)
+                                        :child (scene2d-label :style (constructed-select-box-style-label-style ,style)
                                                               :string ,selection))))
                               (scene2d-node ,selection)))))))
            ,box)))))
-
-(define-scene2d-default-construct-form select-box-style (label-style entry-type))
 
 (defun select-box-promise-index (box &optional (initial-index 0) (handler (constantly nil)))
   "Allow the user to select a child of BOX using directional buttons and return a PROMISE:PROMISE of the selected child's index. The child with INITIAL-INDEX will be selected by default. HANDLER is called before and after the user presses a button (moves the cursor or makes a selection). Before the button is pressed, it is called with FOCUS-MANAGER as the only parameter. After the button is pressed, it is called with FOCUS-MANAGER and the button pressed by the user as parameters, then if HANDLER returns a non-NIL value, it will be used to fulfill the PROMISE:PROMISE of this function, thereby terminating the user's selection."
