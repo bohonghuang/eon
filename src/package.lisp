@@ -163,6 +163,12 @@
    #:dialog-box-promise-display-confirm
    #:ensure-dialog-box-text-label
    #:promise-display-dialog-box-text-label
+   ;; scene2d/ui/arrow.lisp
+   #:arrow-box
+   #:arrow-box-child
+   #:arrow-box-arrow
+   #:arrow-box-style
+   #:scene2d-scroll-region-arrow-box
    ;; utils.lisp
    #:integer-float
    #:array-vector

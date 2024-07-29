@@ -8,10 +8,11 @@
          (select-box (funcall (if swappablep #'swappable-select-box #'identity)
                               (funcall select-box-type selections)))
          (promise-index (if swappablep #'swappable-select-box-promise-index #'select-box-promise-index))
-         (region (scene2d-box-scroll-region select-box 13)))
+         (region (scene2d-box-scroll-region select-box 13))
+         (box (scene2d-scroll-region-arrow-box region)))
     (async
       (with-popped-prompt prompt
-        (with-popped-window (region (:start :start))
+        (with-popped-window (box (:start :start))
           (when-let ((index (await (funcall promise-index select-box
                                             (or (and initial-selection-p (position initial-selection selections)) 0)
                                             (let ((initializedp nil))
