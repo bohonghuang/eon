@@ -1,22 +1,12 @@
 (in-package #:eon)
 
-(deftype select-box-entry ()
-  "A SCENE2D-FOCUSABLE that specializes methods SELECT-BOX-ENTRY-FOCUSED-P and (SETF SELECT-BOX-ENTRY-FOCUSED-P)."
-  'scene2d-focusable)
+(deftype select-box-entry () 'selectable-container-entry)
 
-(defun select-box-entry-content (entry)
-  "Get the content of ENTRY."
-  (scene2d-focusable-content entry))
-
-(defun (setf select-box-entry-content) (content entry)
-  "Set the content of ENTRY."
-  (setf (scene2d-focusable-content entry) content))
-
-(defgeneric select-box-entry-focused-p (entry)
-  (:documentation "Return whether ENTRY is focused."))
-
-(defgeneric (setf select-box-entry-focused-p) (value entry)
-  (:documentation "Set whether ENTRY is focused."))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (setf (fdefinition 'select-box-entry-content) (fdefinition 'selectable-container-entry-content)
+        (fdefinition '(setf select-box-entry-content)) (fdefinition '(setf selectable-container-entry-content))
+        (fdefinition 'select-box-entry-focused-p) (fdefinition 'selectable-container-entry-selected-p)
+        (fdefinition '(setf select-box-entry-focused-p)) (fdefinition '(setf selectable-container-entry-selected-p))))
 
 (defstruct select-box-border-entry-style
   "A structure describing the style of SELECT-BOX-BORDER-ENTRY."
@@ -80,6 +70,9 @@
 (defun select-box-entries (box)
   "Get the entries of BOX."
   (mapcan #'identity (scene2d-table-children box)))
+
+(defmethod selectable-container-entries ((box select-box))
+  (select-box-entries box))
 
 (defun select-box-add-child (box child)
   "Add CHILD to the end of BOX."
@@ -148,30 +141,8 @@
                               (scene2d-node ,selection)))))))
            ,box)))))
 
-(defun select-box-promise-index (box &optional (initial-index 0) (handler (constantly nil)))
-  "Allow the user to select a child of BOX using directional buttons and return a PROMISE:PROMISE of the selected child's index. The child with INITIAL-INDEX will be selected by default. HANDLER is called before and after the user presses a button (moves the cursor or makes a selection). Before the button is pressed, it is called with FOCUS-MANAGER as the only parameter. After the button is pressed, it is called with FOCUS-MANAGER and the button pressed by the user as parameters, then if HANDLER returns a non-NIL value, it will be used to fulfill the PROMISE:PROMISE of this function, thereby terminating the user's selection."
-  (let* ((entries (select-box-entries box))
-         (initial-focused (nth initial-index entries))
-         (manager (make-scene2d-focus-manager :focusables (cons initial-focused (remove initial-focused entries)))))
-    (setf (select-box-entry-focused-p initial-focused) t)
-    (mapc (curry #'(setf select-box-entry-focused-p) nil) (remove initial-focused entries))
-    (async
-      (loop
-        (funcall handler manager)
-        (let ((button (await (promise-pressed-controller-button))))
-          (case button
-            ((:up :down :left :right)
-             (setf (select-box-entry-focused-p (scene2d-focus-manager-focused manager)) nil)
-             (scene2d-focus-manager-handle-input manager button)))
-          (let ((result (funcall handler manager button)))
-            (etypecase result
-              (non-negative-fixnum (return result))
-              ((eql t) (return nil))
-              ((eql nil)
-               (case button
-                 ((:a) (return (position (scene2d-focus-manager-focused manager) entries)))
-                 ((:b) (return nil))))))
-          (setf (select-box-entry-focused-p (scene2d-focus-manager-focused manager)) t))))))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (setf (fdefinition 'select-box-promise-index) (fdefinition 'selectable-container-promise-index)))
 
 (defstruct (table-select-box (:include select-box))
   "A SELECT-BOX constructed from a SCENE2D-TABLE."
