@@ -24,12 +24,13 @@
                              (:file "construct" :depends-on ("basic" "scroll"))
                              (:file "focus" :depends-on ("basic"))
                              (:file "scroll" :depends-on ("basic" "focus"))
+                             (:file "select" :depends-on ("basic" "focus"))
                              (:module "ui"
                               :components ((:file "dialog")
                                            (:file "select")
                                            (:file "input")
                                            (:file "arrow"))
-                              :depends-on ("basic" "construct" "focus" "scroll")))
+                              :depends-on ("basic" "construct" "focus" "scroll" "select")))
                 :depends-on ("package" "texture" "misc" "input" "tween" "shader"))
                (:file "particle" :depends-on ("package" "loop"))
                (:module "scene3d"
