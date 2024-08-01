@@ -90,8 +90,9 @@
            (multiple-value-bind (lower-bound upper-bound)
                (loop :for focusable :in focusables
                      :for focal-point := (scene2d-focusable-focal-point focusable :left)
-                     :minimize (raylib:vector2-x focal-point) :into lower-bound :of-type single-float
-                     :maximize (raylib:vector2-x focal-point) :into upper-bound :of-type single-float
+                     :unless (eq focusable focused)
+                       :minimize (raylib:vector2-x focal-point) :into lower-bound :of-type single-float
+                       :and :maximize (raylib:vector2-x focal-point) :into upper-bound :of-type single-float
                      :finally (return (values lower-bound upper-bound)))
              (let (candidates non-candidates)
                (if (not (<= (raylib:vector2-x focused-point) upper-bound))
@@ -100,7 +101,8 @@
                                                        (push focusable candidates)))
                                                    focusables))
                    (flet ((candidate-valid-p (candidate)
-                            (>= (raylib:vector2-x (scene2d-focusable-focal-point candidate :left)) (raylib:vector2-x focused-point))))
+                            (and (not (eq candidate focused))
+                                 (>= (raylib:vector2-x (scene2d-focusable-focal-point candidate :left)) (raylib:vector2-x focused-point)))))
                      (setf focusables (sort focusables #'<
                                             :key (lambda (focusable)
                                                    (raylib:%vector2-distance (& focused-point) (& (scene2d-focusable-focal-point focusable :left))))))
