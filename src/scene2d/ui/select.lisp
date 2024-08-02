@@ -65,7 +65,10 @@
         :for box :in (scene2d-box-children select-box)
         :do (loop :for cell :in (scene2d-box-content box)
                   :do (setf (scene2d-cell-alignment cell) alignment)))
-  (call-next-method))
+  (call-next-method)
+  (loop :for entry :in (select-box-entries select-box)
+        :for (lower . upper) := (scene2d-focusable-focal-bound entry)
+        :do (raylib:copy-vector2 lower upper)))
 
 (defun select-box-entries (box)
   "Get the entries of BOX."
@@ -141,8 +144,10 @@
                               (scene2d-node ,selection)))))))
            ,box)))))
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (setf (fdefinition 'select-box-promise-index) (fdefinition 'selectable-container-promise-index)))
+(defun select-box-promise-index (&rest args)
+  #.(documentation #'selectable-container-promise-index 'function)
+  (let ((*scene2d-focus-manager-distance-ratio* 0.999))
+    (apply #'selectable-container-promise-index args)))
 
 (defstruct (table-select-box (:include select-box))
   "A SELECT-BOX constructed from a SCENE2D-TABLE."
