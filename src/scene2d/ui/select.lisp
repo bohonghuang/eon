@@ -37,8 +37,8 @@
 
 (defmethod scene2d-layout ((entry select-box-border-entry))
   (call-next-method)
-  (let ((position (scene2d-node-position (select-box-border-entry-content entry)))
-        (size (scene2d-size (select-box-border-entry-content entry)))
+  (let ((position +vector2-zeros+)
+        (size (scene2d-size entry))
         (border (select-box-border-entry-rectangle entry)))
     (setf (raylib:rectangle-x border) (- (raylib:vector2-x position) +select-box-border-entry-rectangle-padding+)
           (raylib:rectangle-y border) (- (raylib:vector2-y position) +select-box-border-entry-rectangle-padding+)
