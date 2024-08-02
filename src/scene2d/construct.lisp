@@ -50,12 +50,13 @@
 
 (defmacro define-scene2d-default-construct-form (type (&rest args))
   "Define a SCENE2D-CONSTRUCT-FORM method specialized on 'TYPE, treating ARGS as keyword arguments to be passed to the constructor of TYPE."
-  `(defmethod scene2d-construct-form ((type (eql ',type)) &rest args &key ,@args &allow-other-keys)
-     (declare (ignore . ,args))
-     (when-let ((child (getf args :child)))
-       (remove-from-plistf args :child)
-       (setf args (nconc `(:content ,child) args)))
-     `(,',(symbolicate '#:make- type) . ,args)))
+  (with-gensyms (arg)
+    `(defmethod scene2d-construct-form ((,arg (eql ',type)) &rest args &key ,@args &allow-other-keys)
+       (declare (ignore ,arg . ,args))
+       (when-let ((child (getf args :child)))
+         (remove-from-plistf args :child)
+         (setf args (nconc `(:content ,child) args)))
+       `(,',(symbolicate '#:make- type) . ,args))))
 
 (defmacro define-scene2d-default-vector2-argument-form (arg)
   `(defmethod scene2d-construct-argument-form (type (arg (eql ,arg)) form)

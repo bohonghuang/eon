@@ -169,6 +169,11 @@
    #:arrow-box-arrow
    #:arrow-box-style
    #:scene2d-scroll-region-arrow-box
+   ;; scene2d/ui/keyboard.lisp
+   #:virtual-keyboard
+   #:virtual-keyboard-style
+   #:virtual-keyboard-key-style
+   #:virtual-keyboard-promise-char
    ;; utils.lisp
    #:integer-float
    #:array-vector
