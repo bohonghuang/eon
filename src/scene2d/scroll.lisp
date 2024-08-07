@@ -35,6 +35,9 @@
   (remove-from-plistf args :child :size)
   (apply #'make-scene2d-focusable :content (make-scene2d-scissor :content child :size size) args))
 
+(defun scene2d-scroll-region-size (region)
+  (scene2d-scissor-size (scene2d-focusable-content region)))
+
 (defun scene2d-scroll-region-child (region)
   (scene2d-scissor-content (scene2d-focusable-content region)))
 
@@ -48,15 +51,19 @@
   (declare (ignore child size))
   `(make-scene2d-scroll-region . ,args))
 
-(defun scene2d-box-scroll-region (box &optional (cells 8))
-  "Build a SCENE2D-SCROLL-REGION containing BOX. Only CELLS of its children can be displayed at a time."
+(defun scene2d-box-scroll-region (box &optional (dimensions 8))
+  "Build a SCENE2D-SCROLL-REGION containing BOX. Only the children within DIMENSIONS can be displayed at a time."
   (scene2d-layout box)
-  (make-scene2d-scroll-region :child box
-                              :size (ecase (scene2d-box-orientation box)
-                                      (:vertical (raylib:make-vector2 :x (raylib:vector2-x (scene2d-size box))
-                                                                      :y (loop :for cell :in (scene2d-box-content box)
-                                                                               :repeat cells
-                                                                               :summing (raylib:vector2-y (scene2d-cell-size cell)) :of-type single-float))))))
+  (let ((dimensions (etypecase dimensions
+                      (positive-fixnum (list dimensions most-positive-fixnum))
+                      ((cons (eql t) (cons positive-fixnum null)) (list most-positive-fixnum (second dimensions)))
+                      ((cons positive-fixnum (cons (eql t) null)) (list (first dimensions) most-positive-fixnum)))))
+    (make-scene2d-scroll-region :child box
+                                :size (ecase (scene2d-box-orientation box)
+                                        (:vertical (raylib:make-vector2 :x (raylib:vector2-x (scene2d-size box))
+                                                                        :y (loop :for cell :in (scene2d-box-content box)
+                                                                                 :repeat (first dimensions)
+                                                                                 :summing (raylib:vector2-y (scene2d-cell-size cell)) :of-type single-float)))))))
 
 (defstruct scene2d-tile-scroll-style
   "An structure defining the style of SCENE2D-TILE-SCROLL. ENSURE-SCENE2D-NODE is called on the tile repeatly until the SCENE2D-TILE-SCROLL is filled."
