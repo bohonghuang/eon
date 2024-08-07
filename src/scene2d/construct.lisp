@@ -204,8 +204,8 @@
   "The default container used when creating widgets defined through DEFINE-SCENE2D-CONSTRUCTED."
   (metadata (make-hash-table) :type hash-table))
 
-(defmacro define-scene2d-constructed (name construct-form &rest options)
-  "Define a constructable widget type NAME using CONSTRUCT-FORM with SCENE2D-CONSTRUCT's syntax. This will create a constructor MAKE-[NAME], the expansion of its construction form, and accessors for its named children. The following options in DEFCLASS style can be used:  
+(defmacro define-scene2d-constructed (name lambda-list construct-form &rest options)
+  "Define a constructable widget type NAME using CONSTRUCT-FORM with SCENE2D-CONSTRUCT's syntax. This will create a constructor MAKE-[NAME] with LAMBDA-LIST, the expansion of its construction form, and accessors for its named children. The following options in DEFCLASS style can be used:  
 - (:CONSTRUCTOR (&REST ARGS) &BODY BODY): Customize the constructor of the widget, which takes ARGS as keyword arguments. The default constructor can be invoked with a % prefix in BODY.
 - (:CLASS CLASS-NAME :CONSTRUCTOR CLASS-CONSTRUCTOR-NAME): Associate the widget with a structure named CLASS-NAME as its class. This class must be a subclass of SCENE2D-CONSTRUCTED and is often used for specializing methods on the widget. CLASS-CONSTRUCTOR-NAME is used to specify the default constructor for creating the SCENE2D-CONSTRUCTED."
   (labels ((collect-names (form)
@@ -224,7 +224,7 @@
             (accessors nil))
         (with-gensyms (root table)
           `(progn
-             (defun ,(if constructor (symbolicate '#:%make- name) (symbolicate '#:make- name)) ()
+             (defun ,(if constructor (symbolicate '#:%make- name) (symbolicate '#:make- name)) ,lambda-list
                (multiple-value-bind (,root ,table)
                    (scene2d-construct ,construct-form)
                  (setf (gethash ',name ,table) (,class-constructor :content ,root :metadata ,table))))
@@ -248,4 +248,4 @@
                      :collect `(defun ,(symbolicate name '#:- method-name) (,name . ,args)
                                  (with-accessors ,accessors ,name . ,body)))
              (eval-when (:compile-toplevel :load-toplevel :execute)
-               (define-scene2d-default-construct-form ,name ,(mapcar #'cadar (nth-value 3 (parse-ordinary-lambda-list (car constructor))))))))))))
+               (define-scene2d-default-construct-form ,name ,(mapcar #'cadar (nth-value 3 (parse-ordinary-lambda-list (if constructor (car constructor) lambda-list))))))))))))
