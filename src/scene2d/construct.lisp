@@ -200,6 +200,17 @@
 
 (define-scene2d-default-construct-form scene2d-tile-scroll-region-style (tile-scroll-style))
 
+(define-scene2d-default-construct-form scene2d-box-scroll-region (child count))
+
+(defmethod scene2d-construct-form ((type (eql 'scene2d-box-scroll-region)) &rest args &key child dimensions &allow-other-keys)
+  (remove-from-plistf args :child :dimensions)
+  (with-gensyms (region)
+    `(let* ((,region (scene2d-box-scroll-region ,child ',dimensions)))
+       (scene2d-construct (scene2d-scroll-region
+                           :child (scene2d-scroll-region-child ,region)
+                           :size (scene2d-scroll-region-size ,region)
+                           . ,args)))))
+
 (defstruct (scene2d-constructed (:include scene2d-container))
   "The default container used when creating widgets defined through DEFINE-SCENE2D-CONSTRUCTED."
   (metadata (make-hash-table) :type hash-table))
