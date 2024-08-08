@@ -65,7 +65,7 @@
                                   :when (funcall test loaded-data data)
                                     :return loaded-data)))
         (progn (remhash loaded-data data-info) loaded-data)
-        (error "Asset ~A is not loaded." data)))))
+        (cerror "Skip unloading the asset." 'asset-not-loaded-error :data data :type asset-type)))))
 
 (defmacro with-registered-unshareable-asset ((data-form &optional test) &body body)
   (with-gensyms (data)
@@ -104,18 +104,15 @@
                    (format stream "No asset of type ~A is loaded." type))))))
 
 (defmethod unload-asset :around (data &aux (asset-type (type-of data)))
-  (restart-case
-      (with-accessors ((type-table asset-manager-type-table)) *asset-manager*
-        (with-accessors ((source-info asset-type-source-info)
-                         (data-info asset-type-data-info))
-            (ensure-gethash asset-type type-table (error 'asset-not-loaded-error :type asset-type))
-          (let ((info (ensure-gethash data data-info (error 'asset-not-loaded-error :type asset-type :data data))))
-            (when (zerop (decf (asset-info-reference-counter info)))
-              (call-next-method)
-              (mapc (rcurry #'remhash source-info) (asset-info-source info))
-              (remhash data data-info)))))
-    (skip-unloading-asset ()
-      :report (lambda (stream) (format stream "Skip unloading asset ~A." data)))))
+  (with-accessors ((type-table asset-manager-type-table)) *asset-manager*
+    (with-accessors ((source-info asset-type-source-info)
+                     (data-info asset-type-data-info))
+        (ensure-gethash asset-type type-table (cerror "Skip unloading the asset." 'asset-not-loaded-error :type asset-type))
+      (let ((info (ensure-gethash data data-info (cerror "Skip unloading the asset." 'asset-not-loaded-error :type asset-type :data data))))
+        (when (zerop (decf (asset-info-reference-counter info)))
+          (call-next-method)
+          (mapc (rcurry #'remhash source-info) (asset-info-source info))
+          (remhash data data-info))))))
 
 (defstruct asset-group
   (table (make-hash-table :test #'equal) :type hash-table))
@@ -138,7 +135,7 @@
 (defmacro with-asset-manager (&body body)
   `(let* ((*asset-manager* (make-asset-manager)))
      (unwind-protect (progn . ,body)
-       (handler-bind ((asset-not-loaded-error (lambda (c) (declare (ignore c)) (invoke-restart 'skip-unloading-asset))))
+       (handler-bind ((asset-not-loaded-error (lambda (c) (declare (ignore c)) (invoke-restart 'continue))))
          (loop :for loaded-assets := (loaded-assets) :while loaded-assets :do (mapc #'unload-asset loaded-assets))))))
 
 (defmethod load-asset ((asset-type (eql 'raylib:texture)) (path pathname) &key)
