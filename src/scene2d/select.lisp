@@ -29,6 +29,12 @@
   "A SCENE2D-FOCUSABLE that specializes methods SELECTABLE-CONTAINER-ENTRY-SELECTED-P and (SETF SELECTABLE-CONTAINER-ENTRY-SELECTED-P)."
   '(and scene2d-focusable (satisfies selectable-container-entry-p)))
 
+(defmacro await-if-possible (form)
+  (once-only (form)
+    `(typecase ,form
+       (promise:promise (await ,form))
+       (t ,form))))
+
 (defun selectable-container-promise-index (container &optional (initial-index 0) (handler (constantly nil)))
   "Allow the user to select a child of CONTAINER using directional buttons and return a PROMISE:PROMISE of the selected child's index. The child with INITIAL-INDEX will be selected by default. HANDLER is called before and after the user presses a button (moves the cursor or makes a selection). Before the button is pressed, it is called with FOCUS-MANAGER as the only parameter. After the button is pressed, it is called with FOCUS-MANAGER and the button pressed by the user as parameters, then if HANDLER returns a non-NIL value, it will be used to fulfill the PROMISE:PROMISE of this function, thereby terminating the user's selection."
   (let* ((entries (selectable-container-entries container))
@@ -40,13 +46,13 @@
     (mapc (curry #'(setf selectable-container-entry-selected-p) nil) (remove initial-focused entries))
     (async
       (loop
-        (funcall handler manager)
+        (await-if-possible (funcall handler manager))
         (let ((button (await (promise-pressed-controller-button))))
           (case button
             ((:up :down :left :right)
              (setf (selectable-container-entry-selected-p (scene2d-focus-manager-focused manager)) nil)
              (scene2d-focus-manager-handle-input manager button)))
-          (let ((result (funcall handler manager button)))
+          (let ((result (await-if-possible (funcall handler manager button))))
             (etypecase result
               (non-negative-fixnum (return result))
               ((eql t) (return nil))
