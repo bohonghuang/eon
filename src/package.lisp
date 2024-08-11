@@ -276,6 +276,9 @@
    #:promise-fade-audio
    #:crossfade-audio
    #:promise-crossfade-audio
+   ;; post-effect.lisp
+   #:make-post-effect-viewport
+   #:post-effect-viewport
    ;; screen.lisp
    #:with-screen-manager-mode
    #:screen-manager

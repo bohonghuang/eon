@@ -295,7 +295,7 @@
                      (if (search "defined(VERTEX)" code)
                          (format nil "~A#define VERTEX~%~A" code-before-version code-after-version)
                          (null-pointer))
-                     (if (or (search "defined(FRAGMENT)" code))
+                     (if (search "defined(FRAGMENT)" code)
                          (format nil "~A#define FRAGMENT~%~A" code-before-version code-after-version)
                          (null-pointer)))))
         (throw 'load-asset (register-unshareable-asset shader (cobj:pointer-cobject (& shader) 'raylib:shader)))))))
