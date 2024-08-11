@@ -150,10 +150,11 @@
                           (tint color))
                  (when (funcall bound-predicate position origin scale rotation tint)
                    (loop :for (texture-region-cons . frames) :in animated-tiles
-                         :for current-duration :of-type single-float := (coerce (raylib:fmod (game-loop-time) (coerce (the single-float (car (first frames))) 'double-float)) 'single-float)
-                         :do (setf (car texture-region-cons) (loop :for current-texture-region := nil :then texture-region
-                                                                   :for (duration . texture-region) :in frames
-                                                                   :if (<= (the single-float duration) current-duration)
+                         :for current-duration :of-type single-float
+                           := (coerce (mod (game-loop-time) (coerce (the single-float (car (first frames))) 'double-float)) 'single-float)
+                         :do (setf (car texture-region-cons) (loop :for current-texture-region :of-type texture-region := (cdr (first frames)) :then texture-region
+                                                                   :for (duration . texture-region) :of-type (single-float . texture-region) :in frames
+                                                                   :if (< duration current-duration)
                                                                      :return current-texture-region
                                                                    :finally (return current-texture-region))))
                    (setf (raylib:rectangle-width dest) (* (coerce tile-width 'single-float) (raylib:vector2-x scale))
