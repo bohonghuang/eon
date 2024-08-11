@@ -555,7 +555,9 @@
 (defmethod scene2d-draw ((truncator scene2d-coordinate-truncator) position origin scale rotation tint)
   (declare (ignore origin rotation scale tint))
   (setf (raylib:vector2-x position) (ftruncate (raylib:vector2-x position))
-        (raylib:vector2-y position) (ftruncate (raylib:vector2-y position)))
+        (raylib:vector2-y position) (ftruncate (raylib:vector2-y position))
+        (raylib:vector2-x origin) (ftruncate (raylib:vector2-x origin))
+        (raylib:vector2-y origin) (ftruncate (raylib:vector2-y origin)))
   (call-next-method))
 
 (defstruct scene2d-label-style
