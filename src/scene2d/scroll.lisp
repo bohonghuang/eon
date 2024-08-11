@@ -41,6 +41,31 @@
 (defun scene2d-scroll-region-child (region)
   (scene2d-scissor-content (scene2d-focusable-content region)))
 
+(cobj:define-global-cobject +vector2-epsilons+ (raylib:make-vector2 :x single-float-epsilon :y single-float-epsilon))
+
+(defun scene2d-scroll-region-progress (region)
+  (let ((region-size (scene2d-size region))
+        (child-size (scene2d-size (scene2d-scroll-region-child region)))
+        (child-position (scene2d-position (scene2d-scroll-region-child region))))
+    (raylib:vector2-divide
+     (raylib:vector2-negate child-position)
+     (raylib:vector2-clamp
+      (raylib:vector2-subtract child-size region-size)
+      +vector2-epsilons+ +vector2-max+))))
+
+(defun (setf scene2d-scroll-region-progress) (progress region)
+  (let ((region-size (scene2d-size region))
+        (child-size (scene2d-size (scene2d-scroll-region-child region)))
+        (child-position (scene2d-position (scene2d-scroll-region-child region))))
+    (raylib:copy-vector2
+     (raylib:vector2-negate
+      (raylib:vector2-multiply
+       progress
+       (raylib:vector2-clamp
+        (raylib:vector2-subtract child-size region-size)
+        +vector2-zeros+ +vector2-max+)))
+     child-position)))
+
 (defun scene2d-scroll-region-scroll-to-focusable (region focusable)
   "Scroll the content within the REGION to make the content of FOCUSABLE visible within the visible range of the REGION."
   (let ((position (scene2d-node-position (scene2d-scroll-region-child region)))

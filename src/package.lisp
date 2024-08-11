@@ -125,6 +125,7 @@
    #:scene2d-scroll-region
    #:scene2d-scroll-region-scroll-to-focusable
    #:scene2d-scroll-region-child
+   #:scene2d-scroll-region-progress
    #:scene2d-box-scroll-region
    #:scene2d-tile-scroll-style
    #:scene2d-tile-scroll-region-style
