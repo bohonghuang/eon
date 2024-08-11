@@ -178,6 +178,8 @@
       (values vars vals `(,store) `(setf (scene2d-node-rotation ,getter) ,store) `(scene2d-rotation ,getter)))))
 
 (defgeneric ensure-scene2d-node (object &rest args)
+  (:method ((null null) &rest args)
+    (apply #'make-scene2d-container :content nil args))
   (:method ((node scene2d-node) &key
                                   (position (scene2d-node-position node))
                                   (origin (scene2d-node-origin node))
@@ -405,6 +407,14 @@
 
 (defmethod ensure-scene2d-node ((nine-patch n-patch) &rest args)
   (apply #'make-scene2d-nine-patch :content nine-patch args))
+
+(defun ensure-scene2d-node-origin-at-center (node)
+  (raylib:copy-vector2
+   (raylib:copy-vector2
+    (raylib:vector2-scale (scene2d-size node) 0.5)
+    (scene2d-node-origin node))
+   (scene2d-node-position node))
+  node)
 
 (defmethod scene2d-draw ((nine-patch scene2d-nine-patch) position origin scale rotation tint)
   (let ((size (scene2d-nine-patch-size nine-patch)))

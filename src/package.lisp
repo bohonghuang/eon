@@ -174,6 +174,10 @@
    #:virtual-keyboard-style
    #:virtual-keyboard-key-style
    #:virtual-keyboard-promise-char
+   ;; scene2d/ui/bar.lisp
+   #:progress-bar
+   #:progress-bar-style
+   #:progress-bar-value
    ;; utils.lisp
    #:integer-float
    #:array-vector

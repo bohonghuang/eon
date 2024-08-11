@@ -48,6 +48,8 @@
       (fdefinition 'scene3d-color) (fdefinition 'scene3d-node-color))
 
 (defgeneric ensure-scene3d-node (object &rest args)
+  (:method ((null null) &rest args)
+    (apply #'make-scene3d-container :content nil args))
   (:method ((node scene3d-node) &key
                                   (position (scene3d-node-position node))
                                   (scale (scene3d-node-scale node))

@@ -50,14 +50,6 @@
   "A SCENE2D-NODE used to display arrows around its child node."
   (style (make-arrow-box-style) :type arrow-box-style))
 
-(defun ensure-scene2d-node-origin-at-center (node)
-  (raylib:copy-vector2
-   (raylib:copy-vector2
-    (raylib:vector2-scale (scene2d-size node) 0.5)
-    (scene2d-origin node))
-   (scene2d-position node))
-  node)
-
 (defun make-arrow-box (&rest args &key child (content child) (style (make-arrow-box-style)) (constructor #'%make-arrow-box) &allow-other-keys)
   (remove-from-plistf args :child :style :constructor)
   (apply constructor

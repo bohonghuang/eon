@@ -30,6 +30,7 @@
                                            (:file "select")
                                            (:file "input")
                                            (:file "arrow")
+                                           (:file "bar")
                                            (:file "keyboard" :depends-on ("select")))
                               :depends-on ("basic" "construct" "focus" "scroll" "select")))
                 :depends-on ("package" "texture" "misc" "input" "tween" "shader"))
