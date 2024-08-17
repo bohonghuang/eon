@@ -68,6 +68,14 @@
   "Get the currently focused SCENE2D-FOCUSABLE."
   (first (scene2d-focus-manager-focusables manager)))
 
+(defun (setf scene2d-focus-manager-focused) (value manager)
+  "Set the currently focused SCENE2D-FOCUSABLE."
+  (rotatef
+   (nth 0 (scene2d-focus-manager-focusables manager))
+   (nth (position value (scene2d-focus-manager-focusables manager))
+        (scene2d-focus-manager-focusables manager)))
+  value)
+
 (defun scene2d-focus-manager-handle-input (manager button)
   "Make the MANAGER change the currently focused SCENE2D-FOCUSABLE based on the BUTTON (which can be :LEFT, :RIGHT, :UP, or :DOWN)."
   (with-accessors ((focusables scene2d-focus-manager-focusables))
