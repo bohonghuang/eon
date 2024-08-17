@@ -6,7 +6,9 @@
   (setf (fdefinition 'select-box-entry-content) (fdefinition 'selectable-container-entry-content)
         (fdefinition '(setf select-box-entry-content)) (fdefinition '(setf selectable-container-entry-content))
         (fdefinition 'select-box-entry-focused-p) (fdefinition 'selectable-container-entry-selected-p)
-        (fdefinition '(setf select-box-entry-focused-p)) (fdefinition '(setf selectable-container-entry-selected-p))))
+        (fdefinition '(setf select-box-entry-focused-p)) (fdefinition '(setf selectable-container-entry-selected-p))
+        (fdefinition 'select-box-selected-entry) (fdefinition 'selectable-container-selected-entry)
+        (fdefinition '(setf select-box-selected-entry)) (fdefinition '(setf selectable-container-selected-entry))))
 
 (defstruct select-box-border-entry-style
   "A structure describing the style of SELECT-BOX-BORDER-ENTRY."

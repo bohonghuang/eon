@@ -126,6 +126,11 @@
               :do ,(funcall add-child-form child)))
       (list `(progn ,@(mapcar (compose add-child-form #'scene2d-argument-construct-form) children-form))))))
 
+(defun ensure-scene2d-construct-children-list-form (form)
+  (etypecase form
+    ((or (and symbol (not null)) (cons symbol list)) form)
+    (list (cons 'list (mapcar (curry #'apply #'scene2d-construct-form) form)))))
+
 (defmethod scene2d-construct-form ((type (eql 'scene2d-box)) &rest args &key children orientation (alignment `(make-scene2d-alignment)) &allow-other-keys)
   (declare (ignore orientation))
   (remove-from-plistf args :children)
