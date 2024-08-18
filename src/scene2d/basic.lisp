@@ -195,13 +195,17 @@
   (:documentation "Return OBJECT as a SCENE2D-NODE using the construction arguments ARGS."))
 
 (defmethod scene2d-size ((list list))
-  (loop :with position := (raylib:make-vector2)
-        :and size := (raylib:make-vector2 :x 0.0 :y 0.0)
+  (loop :with result := (raylib:vector2-zero)
         :for node :in list
-        :do (raylib:copy-vector2 (typecase node (scene2d-node (scene2d-node-position node)) (t +vector2-zeros+)) position)
-            (raylib:%vector2-add (& position) (& position) (& (scene2d-size node)))
-            (raylib:%vector2-clamp (& size) (& size) (& position) (& +vector2-max+))
-        :finally (return size)))
+        :do (setf result (raylib:vector2-clamp
+                          result
+                          (raylib:vector2-subtract
+                           (raylib:vector2-add
+                            (typecase node (scene2d-node (scene2d-node-position node)) (t +vector2-zeros+))
+                            (scene2d-size node))
+                           (scene2d-node-origin node))
+                          +vector2-max+))
+        :finally (return result)))
 
 (defstruct (scene2d-container (:include scene2d-node))
   "A SCENE2D-NODE that can contain other drawables as its children."
@@ -674,12 +678,15 @@
   (deletef (scene2d-container-content (scene2d-group-content group)) child :from-end from-end :test test :key key))
 
 (defmethod scene2d-size ((group scene2d-group))
-  (loop :with result := (raylib:make-vector2 :x 0.0 :y 0.0)
+  (loop :with result := (raylib:vector2-zero)
         :for child :in (scene2d-group-children group)
-        :do (raylib:%vector2-clamp (& result) (& result) (& +vector2-min+) (& (scene2d-node-position child)))
+        :do (setf result (raylib:vector2-clamp
+                          result +vector2-min+
+                          (raylib:vector2-subtract
+                           (scene2d-node-position child)
+                           (scene2d-node-origin child))))
         :finally
-           (raylib:%vector2-subtract (& result) (& (scene2d-size (scene2d-group-content group))) (& result))
-           (return result)))
+           (return (raylib:vector2-subtract (scene2d-size (scene2d-group-content group)) result))))
 
 (defmethod scene2d-layout ((group scene2d-group))
   (call-next-method)
