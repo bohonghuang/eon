@@ -27,7 +27,7 @@
   (scene3d-draw drawable position origin scale rotation tint))
 
 (defgeneric scene3d-bound (object)
-  (:documentation "Get the bounding box of a 3D scene node (excluding its own position, origin, and scaling)."))
+  (:documentation "Get the bounding box of a 3D scene node (excluding its own position)."))
 
 (defgeneric scene3d-layout (object)
   (:method (layout) (declare (ignore layout)))
@@ -61,6 +61,22 @@
     (raylib:copy-color color (scene3d-node-color node))
     node)
   (:documentation "Return OBJECT as a SCENE3D-NODE using the construction arguments ARGS."))
+
+(defmethod scene3d-bound :around ((node scene3d-node))
+  (let ((origin (scene3d-node-origin node))
+        (scale (scene3d-node-scale node))
+        (bound (call-next-method)))
+    (raylib:make-bounding-box
+     :min (raylib:vector3-multiply
+           (raylib:vector3-subtract
+            (raylib:bounding-box-min bound)
+            origin)
+           scale)
+     :max (raylib:vector3-multiply
+           (raylib:vector3-subtract
+            (raylib:bounding-box-max bound)
+            origin)
+           scale))))
 
 (defmethod scene3d-bound ((list list))
   (loop :with position := (raylib:make-vector3)
@@ -147,18 +163,7 @@
     (call-next-method container position origin scale rotation tint)))
 
 (defmethod scene3d-bound ((container scene3d-container))
-  (let* ((content (scene3d-container-content container))
-         (bound (scene3d-bound content)))
-    (typecase content
-      (scene3d-node
-       (let* ((scale (scene3d-node-scale content))
-              (bound (raylib:copy-bounding-box bound))
-              (bound-min (raylib:bounding-box-min bound))
-              (bound-max (raylib:bounding-box-max bound)))
-         (raylib:%vector3-multiply (& bound-min) (& bound-min) (& scale))
-         (raylib:%vector3-multiply (& bound-max) (& bound-max) (& scale))
-         bound))
-      (t bound))))
+  (scene3d-bound (scene3d-container-content container)))
 
 (defmethod scene3d-layout ((container scene3d-container))
   (scene3d-layout (scene3d-container-content container)))
@@ -241,7 +246,8 @@
 
 (defmethod scene3d-bound ((texture-region texture-region))
   (let ((bounding-box (raylib:make-bounding-box :min +vector3-zeros+ :max +vector3-zeros+)))
-    (setf (raylib:vector3-y (raylib:bounding-box-max bounding-box)) (texture-region-height texture-region))
+    (setf (raylib:vector3-x (raylib:bounding-box-max bounding-box)) (texture-region-width texture-region)
+          (raylib:vector3-y (raylib:bounding-box-max bounding-box)) (texture-region-height texture-region))
     bounding-box))
 
 (defun scene3d-billboard-tween-frames (billboard frames
