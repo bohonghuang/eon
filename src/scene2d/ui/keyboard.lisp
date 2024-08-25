@@ -9,14 +9,14 @@
     (setf (scene2d-max-cell-content (virtual-keyboard-border-entry-cell entry)) content)
     entry))
 
-(defmethod scene2d-size ((entry virtual-keyboard-border-entry))
-  (virtual-keyboard-border-entry-size entry))
+(defmethod scene2d-bound ((entry virtual-keyboard-border-entry))
+  (size-rectangle (virtual-keyboard-border-entry-size entry)))
 
 (defmethod scene2d-layout ((entry virtual-keyboard-border-entry))
   (call-next-method)
   (scene2d-layout (virtual-keyboard-border-entry-cell entry))
   (raylib:copy-vector2
-   (scene2d-size (virtual-keyboard-border-entry-cell entry))
+   (print (scene2d-size (virtual-keyboard-border-entry-cell entry)))
    (virtual-keyboard-border-entry-size entry)))
 
 (defstruct virtual-keyboard-key-style

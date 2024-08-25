@@ -60,6 +60,7 @@
    #:scene2d-draw
    #:scene2d-draw-simple
    #:scene2d-size
+   #:scene2d-bound
    #:scene2d-layout
    #:scene2d-node
    #:scene2d-position

@@ -44,7 +44,7 @@
 
 (defmethod scene2d-layout ((focusable scene2d-focusable))
   (call-next-method)
-  (let ((size (scene2d-size focusable)))
+  (let ((size (rectangle-size (scene2d-bound focusable))))
     (scene2d-focusable-update-upper-focal-bound focusable (raylib:vector2-x size) (raylib:vector2-y size))))
 
 (defmethod scene2d-draw ((focusable scene2d-focusable) position origin scale rotation tint)
@@ -53,7 +53,7 @@
     (assert (<= (raylib:vector2-y lower) (raylib:vector2-y upper)))
     (let ((size-x (- (raylib:vector2-x upper) (raylib:vector2-x lower)))
           (size-y (- (raylib:vector2-y upper) (raylib:vector2-y lower))))
-      (raylib:copy-vector2 position lower)
+      (raylib:%vector2-subtract (& lower) (& position) (& origin))
       (scene2d-focusable-update-upper-focal-bound focusable size-x size-y))
     (call-next-method)))
 

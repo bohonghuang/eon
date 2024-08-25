@@ -375,11 +375,11 @@
   (call-next-method))
 
 (defmethod ensure-scene3d-node ((node scene2d-node) &rest args)
-  (let ((size (scene2d-size node)))
-    (apply #'make-scene3d-canvas :size size
-                                 :renderer (curry #'scene2d-draw-simple node)
-                                 :origin (raylib:make-vector3 :x (/ (raylib:vector2-x size) 2.0)
-                                                              :y (/ (raylib:vector2-y size) 2.0)
+  (let ((bound (scene2d-bound node)))
+    (apply #'make-scene3d-canvas :size (rectangle-size bound)
+                                 :renderer (curry #'scene2d-draw-simple node :position (raylib:vector2-negate (rectangle-position bound)))
+                                 :origin (raylib:make-vector3 :x (/ (raylib:vector2-x (rectangle-size bound)) 2.0)
+                                                              :y (/ (raylib:vector2-y (rectangle-size bound)) 2.0)
                                                               :z 0.0)
                                  args)))
 

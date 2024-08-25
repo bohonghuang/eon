@@ -130,6 +130,28 @@
 (defgeneric scene2d-size (node)
   (:documentation "Get the size of a 2D scene node (excluding its own scaling)."))
 
+(defun size-rectangle (vector2)
+  (raylib:make-rectangle :x 0.0 :y 0.0 :width (raylib:vector2-x vector2) :height (raylib:vector2-y vector2)))
+
+(define-compiler-macro size-rectangle (&whole form vector2)
+  (typecase vector2
+    ((cons (eql raylib:make-vector2) t)
+     (destructuring-bind (&key x y) (cdr vector2)
+       `(raylib:make-rectangle :x 0.0 :y 0.0 :width ,x :height ,y)))
+    (t form)))
+
+(defun rectangle-position (rectangle)
+  (clet ((array (cthe (:pointer (:array (:struct raylib:vector2) 2)) (& rectangle))))
+    (raylib::%%%make-vector2 :pointer (& ([] array 0)) :shared-from rectangle)))
+
+(defun rectangle-size (rectangle)
+  (clet ((array (cthe (:pointer (:array (:struct raylib:vector2) 2)) (& rectangle))))
+    (raylib::%%%make-vector2 :pointer (& ([] array 1)) :shared-from rectangle)))
+
+(defgeneric scene2d-bound (node)
+  (:method (object) (size-rectangle (scene2d-size object)))
+  (:documentation "Get the bounding rectangle of a 2D scene node (excluding its own position)."))
+
 (defgeneric (setf scene2d-size) (value node)
   (:method (value node) (declare (ignore value node)))
   (:documentation "Set the size of a 2D scene node."))
@@ -194,18 +216,30 @@
     node)
   (:documentation "Return OBJECT as a SCENE2D-NODE using the construction arguments ARGS."))
 
+(defmethod scene2d-bound :around ((node scene2d-node))
+  (let ((origin (scene2d-node-origin node))
+        (scale (scene2d-node-scale node))
+        (bound (call-next-method)))
+    (raylib:make-rectangle
+     :x (* (- (raylib:rectangle-x bound) (raylib:vector2-x origin)) (raylib:vector2-x scale))
+     :y (* (- (raylib:rectangle-y bound) (raylib:vector2-y origin)) (raylib:vector2-y scale))
+     :width (* (raylib:rectangle-width bound) (raylib:vector2-x scale))
+     :height (* (raylib:rectangle-height bound) (raylib:vector2-y scale)))))
+
+(defmethod scene2d-bound ((list list))
+  (loop :for object :in list
+        :for position := (typecase object (scene2d-node (scene2d-node-position object)) (t +vector2-zeros+))
+        :and bound := (scene2d-bound object)
+        :for x :of-type single-float := (+ (raylib:vector2-x position) (raylib:rectangle-x bound))
+        :and y :of-type single-float := (+ (raylib:vector2-y position) (raylib:rectangle-y bound))
+        :minimize x :into x-min :of-type single-float
+        :minimize y :into y-min :of-type single-float
+        :maximize (+ x (raylib:rectangle-width bound)) :into x-max :of-type single-float
+        :maximize (+ y (raylib:rectangle-height bound)) :into y-max :of-type single-float
+        :finally (return (raylib:make-rectangle :x x-min :y y-min :width (- x-max x-min) :height (- y-max y-min)))))
+
 (defmethod scene2d-size ((list list))
-  (loop :with result := (raylib:vector2-zero)
-        :for node :in list
-        :do (setf result (raylib:vector2-clamp
-                          result
-                          (raylib:vector2-subtract
-                           (raylib:vector2-add
-                            (typecase node (scene2d-node (scene2d-node-position node)) (t +vector2-zeros+))
-                            (scene2d-size node))
-                           (scene2d-node-origin node))
-                          +vector2-max+))
-        :finally (return result)))
+  (if list (rectangle-size (scene2d-bound list)) (raylib:vector2-zero)))
 
 (defstruct (scene2d-container (:include scene2d-node))
   "A SCENE2D-NODE that can contain other drawables as its children."
@@ -214,12 +248,13 @@
 (defmethod scene2d-layout ((container scene2d-container))
   (scene2d-layout (scene2d-container-content container)))
 
+(defmethod scene2d-bound ((node scene2d-container))
+  (if (scene2d-container-content node)
+      (scene2d-bound (scene2d-container-content node))
+      (raylib:make-rectangle :x 0.0 :y 0.0 :width 0.0 :height 0.0)))
+
 (defmethod scene2d-size ((container scene2d-container))
-  (let* ((content (scene2d-container-content container))
-         (size (scene2d-size content)))
-    (typecase content
-      (scene2d-node (raylib:vector2-multiply size (scene2d-node-scale content)))
-      (t size))))
+  (scene2d-size (scene2d-container-content container)))
 
 (defmacro with-scene2d-container-transform ((container (position origin scale rotation tint)) &body body)
   (with-gensyms (target-position
@@ -297,6 +332,9 @@
 (defmethod (setf scene2d-size) (value (layout scene2d-layout))
   (raylib:copy-vector2 value (scene2d-layout-size layout)))
 
+(defmethod scene2d-bound ((layout scene2d-layout))
+  (size-rectangle (scene2d-size layout)))
+
 (defstruct (scene2d-cell (:include scene2d-layout))
   "A SCENE2D-LAYOUT with a specified size, where its child node can be aligned with it using the specified alignment."
   (alignment (make-scene2d-alignment) :type scene2d-alignment))
@@ -312,19 +350,20 @@
   (call-next-method)
   (when-let ((child (scene2d-cell-content cell)))
     (let ((size (scene2d-size cell))
-          (child-size (scene2d-size child))
-          (child-scale (etypecase child (scene2d-node (scene2d-node-scale child)) (t +vector2-ones+))))
+          (bound (scene2d-bound child)))
       (macrolet ((symmetric-impl (horizontal-impl &aux (vertical-impl (copy-tree horizontal-impl)))
                    (subst-swap vertical-impl
                      (raylib:vector2-x raylib:vector2-y)
+                     (raylib:rectangle-x raylib:rectangle-y)
+                     (raylib:rectangle-width raylib:rectangle-height)
                      (scene2d-alignment-horizontal scene2d-alignment-vertical))
                    `(progn ,horizontal-impl ,vertical-impl)))
         (symmetric-impl
          (progn
            (ecase (scene2d-alignment-horizontal (scene2d-cell-alignment cell))
-             (:start (setf (raylib:vector2-x (scene2d-node-position child)) 0.0))
-             (:center (setf (raylib:vector2-x (scene2d-node-position child)) (/ (- (raylib:vector2-x size) (* (raylib:vector2-x child-size) (raylib:vector2-x child-scale))) 2.0)))
-             (:end (setf (raylib:vector2-x (scene2d-node-position child)) (- (raylib:vector2-x size) (* (raylib:vector2-x child-size) (raylib:vector2-x child-scale))))))
+             (:start (setf (raylib:vector2-x (scene2d-node-position child)) (- (raylib:rectangle-x bound))))
+             (:center (setf (raylib:vector2-x (scene2d-node-position child)) (- (/ (- (raylib:vector2-x size) (raylib:rectangle-width bound)) 2.0) (raylib:rectangle-x bound))))
+             (:end (setf (raylib:vector2-x (scene2d-node-position child)) (- (raylib:vector2-x size) (raylib:rectangle-x bound) (raylib:rectangle-width bound)))))
            (incf (raylib:vector2-x (scene2d-node-position child)) (* (raylib:vector2-x (scene2d-node-scale child)) (raylib:vector2-x (scene2d-node-origin child))))))))))
 
 (defstruct (scene2d-margin (:include scene2d-container)
@@ -347,7 +386,11 @@
 (defmethod scene2d-layout ((margin scene2d-margin))
   (call-next-method)
   (when-let ((child (scene2d-margin-content margin)))
-    (raylib:copy-vector2 (scene2d-margin-lower margin) (scene2d-node-position child))))
+    (raylib:copy-vector2
+     (raylib:vector2-subtract
+      (scene2d-margin-lower margin)
+      (rectangle-position (scene2d-bound child)))
+     (scene2d-node-position child))))
 
 (defmethod scene2d-size ((margin scene2d-margin))
   (raylib:vector2-add
@@ -355,6 +398,9 @@
    (raylib:vector2-add
     (scene2d-margin-lower margin)
     (scene2d-margin-upper margin))))
+
+(defmethod scene2d-bound ((margin scene2d-margin))
+  (size-rectangle (scene2d-size margin)))
 
 (defstruct (scene2d-box (:include scene2d-layout))
   "A SCENE2D-LAYOUT that can arrange its child nodes in a specified orientation, with all child nodes aligned in the center by default in another orientation."
@@ -364,6 +410,7 @@
   (macrolet ((symmetric-impl (&body vertical-impl &aux (horizontal-impl (copy-tree vertical-impl)))
                (subst-swap horizontal-impl
                  (raylib:vector2-x raylib:vector2-y)
+                 (raylib:rectangle-width raylib:rectangle-height)
                  (width height)
                  (x y))
                `(ecase (scene2d-box-orientation box)
@@ -373,13 +420,13 @@
      (loop :for cell :in (scene2d-box-content box)
            :for content := (scene2d-cell-content cell)
            :do (scene2d-layout content)
-           :maximize (raylib:vector2-x (scene2d-size content)) :into width :of-type single-float
+           :maximize (raylib:rectangle-width (scene2d-bound content)) :into width :of-type single-float
            :finally (setf (raylib:vector2-x (scene2d-box-size box)) (max width 0.0)))
      (loop :with width := (raylib:vector2-x (scene2d-box-size box))
            :for cell :in (scene2d-box-content box)
            :for content := (scene2d-cell-content cell)
            :do (setf (raylib:vector2-x (scene2d-cell-size cell)) width
-                     (raylib:vector2-y (scene2d-cell-size cell)) (raylib:vector2-y (scene2d-size content)))
+                     (raylib:vector2-y (scene2d-cell-size cell)) (raylib:rectangle-height (scene2d-bound content)))
            :do (scene2d-layout cell)
                (setf (raylib:vector2-x (scene2d-cell-position cell)) 0.0
                      (raylib:vector2-y (scene2d-cell-position cell)) height)
@@ -488,12 +535,6 @@
   (scene2d-window-layout (scene2d-window-child window) (scene2d-window-background window))
   (scene2d-layout (scene2d-window-background window)))
 
-(defmethod scene2d-size ((window scene2d-window))
-  (raylib:vector2-clamp
-   (scene2d-size (scene2d-window-background window))
-   (scene2d-size (scene2d-window-child window))
-   +vector2-max+))
-
 (defmethod scene2d-window-layout (child (scene2d-nine-patch scene2d-nine-patch))
   (raylib:copy-vector2 (scene2d-size child) (scene2d-nine-patch-size scene2d-nine-patch)))
 
@@ -530,6 +571,7 @@
   (macrolet ((symmetric-impl (&body vertical-impl &aux (horizontal-impl (copy-tree vertical-impl)))
                (subst-swap horizontal-impl
                  (raylib:vector2-x raylib:vector2-y)
+                 (raylib:rectangle-width raylib:rectangle-height)
                  (width height)
                  (x y)
                  (:horizontal :vertical))
@@ -543,7 +585,7 @@
            :while children
            :do (loop :for child := (first children)
                      :do (scene2d-layout child)
-                     :summing (raylib:vector2-x (scene2d-size child)) :into width :of-type single-float
+                     :summing (raylib:rectangle-width (scene2d-bound child)) :into width :of-type single-float
                      :until (and (scene2d-box-content new-box)
                                  (> width (raylib:vector2-x (scene2d-flow-box-size box))))
                      :do (setf (scene2d-cell-alignment (scene2d-box-add-child new-box (pop children)))
@@ -677,23 +719,24 @@
   "Remove CHILD from GROUP."
   (deletef (scene2d-container-content (scene2d-group-content group)) child :from-end from-end :test test :key key))
 
+(defmethod scene2d-bound ((group scene2d-group))
+  (let ((bound (call-next-method)))
+    (incf (raylib:rectangle-width bound) (max (raylib:rectangle-x bound) 0.0))
+    (incf (raylib:rectangle-height bound) (max (raylib:rectangle-y bound) 0.0))
+    (setf (raylib:rectangle-x bound) 0.0 (raylib:rectangle-y bound) 0.0)
+    bound))
+
 (defmethod scene2d-size ((group scene2d-group))
-  (loop :with result := (raylib:vector2-zero)
-        :for child :in (scene2d-group-children group)
-        :do (setf result (raylib:vector2-clamp
-                          result +vector2-min+
-                          (raylib:vector2-subtract
-                           (scene2d-node-position child)
-                           (scene2d-node-origin child))))
-        :finally
-           (return (raylib:vector2-subtract (scene2d-size (scene2d-group-content group)) result))))
+  (rectangle-size (scene2d-bound (scene2d-group-content group))))
 
 (defmethod scene2d-layout ((group scene2d-group))
   (call-next-method)
-  (raylib:%vector2-subtract
-   (& (scene2d-container-position (scene2d-group-content group)))
-   (& (scene2d-size group))
-   (& (scene2d-size (scene2d-group-content group)))))
+  (raylib:copy-vector2
+   (raylib:vector2-clamp
+    (raylib:vector2-negate
+     (rectangle-position (scene2d-bound (scene2d-group-content group))))
+    +vector2-zeros+ +vector2-max+)
+   (scene2d-container-position (scene2d-group-content group))))
 
 (defstruct scene2d-dimensions
   "A structure representing the dimensions of a specific SCENE2D-NODE."
@@ -705,7 +748,7 @@
 
 (defmethod scene2d-size ((cell scene2d-max-cell))
   (raylib:vector2-clamp
-   (scene2d-size (scene2d-max-cell-content cell))
+   (rectangle-size (scene2d-bound (scene2d-max-cell-content cell)))
    (scene2d-max-cell-size cell)
    +vector2-max+))
 

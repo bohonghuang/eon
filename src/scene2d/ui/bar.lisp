@@ -12,24 +12,25 @@
 (define-scene2d-default-construct-form progress-bar-style (orientation track track-region thumb thumb-alignment fill))
 
 (defstruct (progress-bar (:include scene2d-container)
-                       (:constructor %make-progress-bar))
+                         (:constructor %make-progress-bar))
   (style (make-progress-bar-style) :type progress-bar-style))
 
 (defmethod scene2d-size ((progress-bar progress-bar))
-  (scene2d-size (first (progress-bar-content progress-bar))))
+  (rectangle-size (scene2d-bound (first (progress-bar-content progress-bar)))))
+
+(defmethod scene2d-bound ((progress-bar progress-bar))
+  (size-rectangle (scene2d-size progress-bar)))
 
 (defmacro with-progress-bar-value ((progress progress-bar) &body body)
-  (with-gensyms (region track fill thumb style track-region update-thumb-region size value position)
+  (with-gensyms (region track fill thumb style track-region update-thumb-region bound size value position)
     `(destructuring-bind (,track ,fill ,thumb &aux (,style (progress-bar-style ,progress-bar))) (progress-bar-content ,progress-bar)
        (clet ((,region (foreign-alloca '(:struct raylib:rectangle))))
          (if-let ((,track-region (progress-bar-style-track-region ,style)))
            (clet ((,track-region (cthe (:pointer (:struct raylib:rectangle)) (& ,track-region))))
              (csetf ([] ,region) ([] ,track-region)))
-           (let ((,size (scene2d-size ,track)))
-             (setf (-> ,region raylib:x) 0.0
-                   (-> ,region raylib:y) 0.0
-                   (-> ,region raylib:width) (raylib:vector2-x ,size)
-                   (-> ,region raylib:height) (raylib:vector2-y ,size))))
+           (let ((,bound (scene2d-bound ,track)))
+             (clet ((,track-region (cthe (:pointer (:struct raylib:rectangle)) (& ,bound))))
+               (csetf ([] ,region) ([] ,track-region)))))
          (let ((,position (scene2d-position ,fill)))
            (setf (raylib:vector2-x ,position) (-> ,region raylib:x)
                  (raylib:vector2-y ,position) (-> ,region raylib:y)))
@@ -39,7 +40,7 @@
                         (labels ((,update-thumb-region ()
                                    (case (progress-bar-style-thumb-alignment ,style)
                                      (:edge
-                                      (let ((,size (raylib:vector2-multiply (scene2d-size ,thumb) (scene2d-scale ,thumb))))
+                                      (let ((,size (rectangle-size (scene2d-bound ,thumb))))
                                         (incf (-> ,region raylib:x) (/ (raylib:vector2-x ,size) 2.0))
                                         (decf (-> ,region raylib:width) (raylib:vector2-x ,size))))))
                                  (,progress ()
