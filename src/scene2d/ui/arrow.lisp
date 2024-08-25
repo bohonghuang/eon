@@ -96,10 +96,11 @@
 
 (defmethod scene2d-layout ((box arrow-box))
   (call-next-method)
-  (let* ((size (raylib:copy-vector2
-                (scene2d-size (first (arrow-box-content box)))
-                (arrow-box-size box)))
+  (let* ((child (first (arrow-box-content box)))
+         (bound (scene2d-bound child))
+         (size (raylib:copy-vector2 (rectangle-size bound) (arrow-box-size box)))
          (center (raylib:vector2-scale size 0.5)))
+    (raylib:copy-vector2 (raylib:vector2-negate (rectangle-position bound)) (scene2d-position child))
     (loop :for child :in (rest (arrow-box-content box))
           :do (raylib:copy-vector2
                (raylib:vector2-add center (raylib:vector2-multiply center (arrow-box-arrow-direction child)))

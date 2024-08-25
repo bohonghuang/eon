@@ -1,27 +1,23 @@
 (in-package #:eon)
 
 (defun scene2d-scroll-offset (parent child)
-  (clet ((%parent-upper (foreign-alloca '(:struct raylib:vector2)))
-         (%child-upper (foreign-alloca '(:struct raylib:vector2))))
-    (let ((parent-lower (scene2d-focusable-focal-point parent))
-          (parent-size (scene2d-size parent))
-          (parent-upper (cobj:pointer-cobject %parent-upper 'raylib:vector2))
-          (child-lower (scene2d-focusable-focal-point child))
-          (child-size (scene2d-size child))
-          (child-upper (cobj:pointer-cobject %child-upper 'raylib:vector2)))
-      (raylib:%vector2-add (& parent-upper) (& parent-lower) (& parent-size))
-      (raylib:%vector2-add (& child-upper) (& child-lower) (& child-size))
-      (macrolet ((symmetric-impl (x-impl &aux (y-impl (copy-tree x-impl)))
-                   (subst-swap y-impl
-                     (raylib:vector2-x raylib:vector2-y))
-                   `(raylib:make-vector2 :x ,x-impl :y ,y-impl)))
-        (symmetric-impl
-         (cond
-           ((< (raylib:vector2-x child-lower) (raylib:vector2-x parent-lower))
-            (- (raylib:vector2-x parent-lower) (raylib:vector2-x child-lower)))
-           ((< (raylib:vector2-x parent-upper) (raylib:vector2-x child-upper))
-            (- (raylib:vector2-x parent-upper) (raylib:vector2-x child-upper)))
-           (t 0.0)))))))
+  (let* ((parent-size (scene2d-size parent))
+         (parent-lower (scene2d-focusable-focal-point parent))
+         (parent-upper (raylib:vector2-add parent-lower parent-size))
+         (child-bound (scene2d-bound child))
+         (child-lower (raylib:vector2-add (scene2d-focusable-focal-point child) (rectangle-position child-bound)))
+         (child-upper (raylib:vector2-add child-lower (rectangle-size child-bound))))
+    (macrolet ((symmetric-impl (x-impl &aux (y-impl (copy-tree x-impl)))
+                 (subst-swap y-impl
+                   (raylib:vector2-x raylib:vector2-y))
+                 `(raylib:make-vector2 :x ,x-impl :y ,y-impl)))
+      (symmetric-impl
+       (cond
+         ((< (raylib:vector2-x child-lower) (raylib:vector2-x parent-lower))
+          (- (raylib:vector2-x parent-lower) (raylib:vector2-x child-lower)))
+         ((< (raylib:vector2-x parent-upper) (raylib:vector2-x child-upper))
+          (- (raylib:vector2-x parent-upper) (raylib:vector2-x child-upper)))
+         (t 0.0))))))
 
 (defun scene2d-scroll-region-p (instance)
   (and (scene2d-focusable-p instance)
@@ -106,7 +102,7 @@
   (loop :with table := (setf (scene2d-tile-scroll-content scroll) (make-scene2d-table))
         :with size := (scene2d-tile-scroll-size scroll)
         :and tile := (scene2d-tile-scroll-style-tile (scene2d-tile-scroll-style scroll))
-        :with tile-size := (let ((child (ensure-scene2d-node tile))) (scene2d-layout child) (scene2d-size child))
+        :with tile-size := (let ((child (ensure-scene2d-node tile))) (scene2d-layout child) (rectangle-size (scene2d-bound child)))
         :with rows := (1+ (ceiling (raylib:vector2-y size) (raylib:vector2-y tile-size)))
         :and cols := (1+ (ceiling (raylib:vector2-x size) (raylib:vector2-x tile-size)))
         :for row :below rows
