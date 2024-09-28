@@ -173,3 +173,9 @@
     (let* ((layers (tiled:map-layers map))
            (renderers (mapcar #'tiled-layer-renderer layers)))
       (values (tiled-compose-renderers renderers) renderers))))
+
+(defmethod load-asset ((asset-type (eql 'tiled:tiled-map)) (path pathname) &key)
+  (tiled:load-map path))
+
+(defmethod unload-asset ((asset tiled:tiled-map))
+  (declare (ignore asset)))
