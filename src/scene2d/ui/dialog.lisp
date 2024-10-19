@@ -178,11 +178,10 @@
               :do (setf rest-lines rest)
               :finally
                  (return
-                   (let ((*async-continuation-constructor*
-                           (async-special-variable-binder
-                            (*dialog-box* *dialog-box-text-speed*)))
-                         (*dialog-box* box))
-                     (async
+                   (async
+                     (alet ((*dialog-box* box)
+                            (*dialog-box-text-speed* *dialog-box-text-speed*))
+                       (declare (special *dialog-box* *dialog-box-text-speed*))
                        (dolist (line initial-lines)
                          (await (promise-display-line line)))
                        (nconcf initial-lines rest-lines)
