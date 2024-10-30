@@ -72,6 +72,8 @@
                  ((:b) (return nil))))))
           (setf (selectable-container-entry-selected-p (scene2d-focus-manager-focused manager)) t))))))
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (setf (fdefinition 'selectable-container-entry-content) (fdefinition 'scene2d-focusable-content)
-        (fdefinition '(setf selectable-container-entry-content)) (fdefinition '(setf scene2d-focusable-content))))
+(defun selectable-container-entry-content (instance)
+  (scene2d-focusable-content instance))
+
+(defun (setf selectable-container-entry-content) (value instance)
+  (setf (scene2d-focusable-content instance) value))
