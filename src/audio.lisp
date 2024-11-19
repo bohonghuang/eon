@@ -93,12 +93,6 @@
   (:method ((stream raylib:audio-stream)) (raylib:is-audio-stream-playing stream))
   (:documentation "Return whether AUDIO is playing."))
 
-(defgeneric audio-ready-p (audio)
-  (:method ((sound raylib:sound)) (raylib:is-sound-ready sound))
-  (:method ((music raylib:music)) (raylib:is-music-ready music))
-  (:method ((stream raylib:audio-stream)) (raylib:is-audio-stream-ready stream))
-  (:documentation "Return whether AUDIO is ready."))
-
 (defvar *audio-paused-p-table* (tg:make-weak-hash-table :weakness :key :test #'eq))
 
 (defun audio-paused-p (audio)
