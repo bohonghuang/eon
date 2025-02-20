@@ -14,11 +14,9 @@
   "Get elapsed time in seconds since the first loop iteration started."
   (raylib:get-time))
 
-(defstruct game-loop-context
-  (thread (bt2:current-thread) :type bt2:thread)
+(atomics:defstruct game-loop-context
   (loop-begin-hook nil :type list)
-  (loop-end-hook nil :type list)
-  (hook-lock (bt2:make-lock) :type bt2:lock :read-only t))
+  (loop-end-hook nil :type list))
 
 (defvar *game-loop-context* nil)
 
@@ -38,8 +36,7 @@ REPEAT can be:
                                          (function (curry #'funcall repeat))))
                       (original-hook hook))
                   (setf hook (lambda () (funcall repeat-function (funcall original-hook))))
-                  (bt2:with-lock-held ((game-loop-context-hook-lock context))
-                    (push hook ,hook-var)))))
+                  (atomics:atomic-push hook ,hook-var))))
     (ecase type
       ((:begin :before)
        (add-hook (game-loop-context-loop-begin-hook context)))
@@ -47,28 +44,26 @@ REPEAT can be:
        (add-hook (game-loop-context-loop-end-hook context))))
     hook))
 
-(defvar *game-loop-hook-deleted* (constantly nil))
-
 (defun remove-game-loop-hook (hook &aux (context *game-loop-context*))
   "Thread-safely remove HOOK from the game loop."
-  (bt2:with-lock-held ((game-loop-context-hook-lock context))
-    (let ((hook-deleted *game-loop-hook-deleted*))
-      (loop :for hook-cons :on (game-loop-context-loop-begin-hook context)
-            :when (eq (car hook-cons) hook)
-              :do (setf (car hook-cons) hook-deleted))
-      (loop :for hook-cons :on (game-loop-context-loop-end-hook context)
-            :when (eq (car hook-cons) hook)
-              :do (setf (car hook-cons) hook-deleted)))))
+  (loop :for hook-cons :on (game-loop-context-loop-begin-hook context)
+        :when (eq (car hook-cons) hook)
+          :do (setf (car hook-cons) #'values))
+  (loop :for hook-cons :on (game-loop-context-loop-end-hook context)
+        :when (eq (car hook-cons) hook)
+          :do (setf (car hook-cons) #'values)))
 
-(defmacro run-game-loop-hook (hook-var &optional (context '*game-loop-context*))
-  (with-gensyms (hook-deleted hook-cons)
-    `(loop :with ,hook-deleted := *game-loop-hook-deleted*
-           :for ,hook-cons :on ,hook-var
-           :unless (funcall (car ,hook-cons))
-             :do (setf (car ,hook-cons) ,hook-deleted)
-           :finally
-              (bt2:with-lock-held ((game-loop-context-hook-lock ,context))
-                (deletef ,hook-var ,hook-deleted :test #'eq)))))
+(defmacro run-game-loop-hook (hook-var)
+  (with-gensyms (hook previous current next)
+    `(loop :for ,current :on ,hook-var
+           :for (,hook . ,next) := ,current
+           :for ,previous := (if (funcall ,hook)
+                                 ,current
+                                 (if ,previous
+                                     (progn (setf (cdr ,previous) ,next) ,previous)
+                                     (if (atomics:cas ,hook-var ,current ,next)
+                                         ,previous
+                                         (progn (setf (car ,current) #'values) ,current)))))))
 
 (defmacro do-game-loop (&body body)
   "Run the game loop, executing BODY once per loop iteration."

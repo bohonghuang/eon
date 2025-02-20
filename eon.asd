@@ -8,7 +8,7 @@
   :bug-tracker "https://github.com/bohonghuang/eon/issues"
   :source-control (:git "https://github.com/bohonghuang/eon.git")
   :pathname "src/"
-  :depends-on (#:alexandria #:bordeaux-threads #:trivial-garbage #:cffi #:cffi-ops #:cl-tiled
+  :depends-on (#:alexandria #:atomics #:trivial-garbage #:cffi #:cffi-ops #:cl-tiled
                #:claw-raylib #:universal-tween-engine #:promise-async-await #:lparallel #:log4cl)
   :components ((:file "package")
                (:file "utils" :depends-on ("package"))
