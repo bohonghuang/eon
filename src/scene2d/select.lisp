@@ -51,7 +51,7 @@
          (initial-focused (etypecase initial-index
                             (non-negative-fixnum (nth initial-index entries))
                             ((eql nil) (find-if #'selectable-container-entry-selected-p entries))))
-         (manager (make-scene2d-focus-manager :focusables (cons initial-focused (remove initial-focused entries)))))
+         (manager (make-scene2d-focus-manager :focusables (cons initial-focused (delete initial-focused (copy-list entries))))))
     (setf (selectable-container-entry-selected-p initial-focused) t)
     (mapc (curry #'(setf selectable-container-entry-selected-p) nil) (remove initial-focused entries))
     (async
