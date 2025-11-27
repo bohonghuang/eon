@@ -10,7 +10,26 @@
    (load-asset 'raylib:render-texture nil
                :width +world-viewport-default-width+
                :height +world-viewport-default-height+)
-   :type raylib:render-texture))
+   :type raylib:render-texture)
+  (alpha-unpremultiply-shader
+   (load-asset 'raylib:shader
+"#version 330
+#if defined(FRAGMENT)
+in vec2 fragTexCoord;
+in vec4 fragColor;
+
+uniform sampler2D texture0;
+
+out vec4 finalColor;
+
+void main() {
+  finalColor = texture(texture0, fragTexCoord) * fragColor;
+  if (finalColor.a > 0) {
+    finalColor.rgb = finalColor.rgb / finalColor.a;
+  }
+}
+#endif")
+   :type raylib:shader))
 
 (defun make-post-effect-manager (&key (size (raylib:make-vector2
                                              :x #.(float +world-viewport-default-width+)
@@ -43,9 +62,14 @@
   (raylib:end-blend-mode)
   (raylib:end-texture-mode)
   (raylib:with-texture-mode (post-effect-manager-render-texture post-effect-manager)
-    (clet* ((render-texture (cthe (:pointer (:struct raylib:render-texture)) (& (post-effect-manager-vertically-flipped-render-texture post-effect-manager))))
-            (texture (& (-> render-texture raylib:texture))))
-      (raylib:%draw-texture texture 0 0 (& raylib:+white+)))))
+    (raylib:clear-background raylib:+blank+)
+    (raylib:with-shader-mode (post-effect-manager-alpha-unpremultiply-shader post-effect-manager)
+      (clet* ((render-texture (cthe (:pointer (:struct raylib:render-texture)) (& (post-effect-manager-vertically-flipped-render-texture post-effect-manager))))
+              (texture (& (-> render-texture raylib:texture))))
+        (rlgl:disable-color-blend)
+        (raylib:%draw-texture texture 0 0 (& raylib:+white+))
+        (rlgl:draw-render-batch-active)
+        (rlgl:enable-color-blend)))))
 
 (defmacro with-post-effect-manager-mode (post-effect-manager &body body)
   (once-only (post-effect-manager)
