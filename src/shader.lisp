@@ -65,7 +65,7 @@ This macro will generate a structure named [NAME]-SHADER-UNIFORMS, as well as an
                    :for slot-accessor := (symbolicate name '#:- slot-name)
                    :collect `(defun ,slot-accessor (,instance)
                                (,(symbolicate struct-name '#:- slot-name) (,struct-name ,instance)))
-                   :when (member slot-ctype '(:float :int))
+                   :when (member slot-ctype '(:float :int32 :uint32 :bool))
                      :collect `(defun (setf ,slot-accessor) (,value ,instance)
                                  (setf (,(symbolicate struct-name '#:- slot-name) (,struct-name ,instance)) ,value)))
            ,(let ((initializer-name (symbolicate '#:initialize- struct-name))
