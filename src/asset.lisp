@@ -77,16 +77,18 @@
              (unwind-protect (progn . ,body)
                (deregister-unshareable-asset ,data . ,(when test (list test)))))))))
 
-(defmethod load-asset :around (asset-type source &key)
+(defmethod load-asset :around (asset-type source &rest args &key &allow-other-keys)
   (with-accessors ((type-table asset-manager-type-table)) *asset-manager*
     (with-accessors ((source-info asset-type-source-info)
                      (data-info asset-type-data-info))
         (ensure-gethash asset-type type-table (make-asset-type :name asset-type))
-      (let ((info (ensure-gethash source source-info
-                                  (let* ((data (call-next-method))
-                                         (info (ensure-gethash data data-info (make-asset-info :data data :source nil))))
-                                    (assert (eq (type-of data) asset-type))
-                                    (pushnew source (asset-info-source info) :test #'equal) info))))
+      (let* ((source (cons source args))
+             (info (ensure-gethash source source-info
+                                   (let* ((data (call-next-method))
+                                          (info (ensure-gethash data data-info (make-asset-info :data data :source nil))))
+                                     (assert (eq (type-of data) asset-type))
+                                     (pushnew source (asset-info-source info) :test #'equal)
+                                     info))))
         (incf (asset-info-reference-counter info))
         (asset-info-data info)))))
 
@@ -138,14 +140,20 @@
        (handler-bind ((asset-not-loaded-error (lambda (c) (declare (ignore c)) (invoke-restart 'continue))))
          (loop :for loaded-assets := (loaded-assets) :while loaded-assets :do (mapc #'unload-asset loaded-assets))))))
 
-(defmethod load-asset ((asset-type (eql 'raylib:texture)) (path pathname) &key)
-  (raylib:load-texture (namestring path)))
+(defmethod load-asset ((asset-type (eql 'raylib:texture)) (path pathname) &key filter wrap)
+  (let ((texture (raylib:load-texture (namestring path))))
+    (when filter (raylib:set-texture-filter texture (foreign-enum-value 'raylib:texture-filter filter)))
+    (when wrap (raylib:set-texture-wrap texture (foreign-enum-value 'raylib:texture-wrap wrap)))
+    texture))
 
-(defmethod load-asset ((asset-type (eql 'raylib:texture)) source &rest args)
-  (raylib:load-texture-from-image (apply #'load-asset 'raylib:image source args)))
+(defmethod load-asset ((asset-type (eql 'raylib:texture)) source &rest args &key filter wrap)
+  (let ((texture (raylib:load-texture-from-image (apply #'load-asset 'raylib:image source (delete-from-plist args :filter :wrap)))))
+    (when filter (raylib:set-texture-filter texture (foreign-enum-value 'raylib:texture-filter filter)))
+    (when wrap (raylib:set-texture-wrap texture (foreign-enum-value 'raylib:texture-wrap wrap)))
+    texture))
 
-(defmethod load-asset :around ((asset-type (eql 'raylib:texture)) source &key)
-  (let ((texture (call-next-method)))
+(defmethod load-asset :around ((asset-type (eql 'raylib:texture)) source &rest args)
+  (let ((texture (apply #'call-next-method asset-type source args)))
     (assert (and (plusp (raylib:texture-width texture)) (plusp (raylib:texture-height texture))) (texture)
             "The dimension of ~A is invalid (~Dx~D), possibly due to the corrupted or non-existent loading source ~S."
             texture (raylib:texture-width texture) (raylib:texture-height texture) source)
@@ -208,8 +216,12 @@
 (defmethod unload-asset ((animations raylib::model-animations))
   (raylib:unload-model-animations animations (cobj:clength animations)))
 
-(defmethod load-asset ((asset-type (eql 'raylib:font)) (path pathname) &key)
-  (raylib:load-font (namestring path)))
+(defmethod load-asset ((asset-type (eql 'raylib:font)) (path pathname) &key size filter)
+  (let ((font (if size
+                  (raylib:load-font-ex (namestring path) size (cobj:pointer-cpointer (null-pointer) '(signed-byte 32)) 0)
+                  (raylib:load-font (namestring path)))))
+    (when filter (raylib:set-texture-filter (raylib:font-texture font) (foreign-enum-value 'raylib:texture-filter filter)))
+    font))
 
 (defmethod unload-asset ((font raylib:font))
   (raylib:unload-font font))
