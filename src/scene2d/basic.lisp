@@ -403,7 +403,7 @@
   (size-rectangle (scene2d-size margin)))
 
 (defstruct (scene2d-box (:include scene2d-layout))
-  "A SCENE2D-LAYOUT that can arrange its child nodes in a specified orientation, with all child nodes aligned in the center by default in another orientation."
+  "A SCENE2D-LAYOUT that can arrange its child nodes in a specified orientation."
   (orientation :vertical :type (member :vertical :horizontal)))
 
 (defmethod scene2d-layout ((box scene2d-box))
@@ -437,9 +437,20 @@
   "Get the children of BOX."
   (mapcar #'scene2d-cell-content (scene2d-box-content box)))
 
-(defun scene2d-box-add-child (box child)
-  "Add CHILD to BOX as its last child."
-  (let ((cell (make-scene2d-cell :content child)))
+(defun scene2d-box-add-child (box child &optional (alignment (if-let ((cell (lastcar (scene2d-box-content box))))
+                                                               (ecase (scene2d-box-orientation box)
+                                                                 (:vertical (scene2d-alignment-horizontal (scene2d-cell-alignment cell)))
+                                                                 (:horizontal (scene2d-alignment-vertical (scene2d-cell-alignment cell))))
+                                                               :center)))
+  "Add CHILD to BOX as its last child. ALIGNMENT is used to specify the alignment of the added child's cell."
+  (let ((cell (make-scene2d-cell
+               :content child
+               :alignment (etypecase alignment
+                            (scene2d-alignment alignment)
+                            ((member :start :center :end)
+                             (ecase (scene2d-box-orientation box)
+                               (:vertical (make-scene2d-alignment :horizontal alignment))
+                               (:horizontal (make-scene2d-alignment :vertical alignment))))))))
     (nconcf (scene2d-box-content box) (list cell))
     cell))
 
