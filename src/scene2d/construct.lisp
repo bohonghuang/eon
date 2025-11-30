@@ -240,7 +240,7 @@
             (methods (remove :animation options :key #'car :test-not #'eq))
             (conc-name (car (or (cdr (find :conc-name options :key #'car)) (list name))))
             (accessors nil))
-        (with-gensyms (root table)
+        (with-gensyms (root table value)
           `(progn
              (defun ,(if constructor (symbolicate '#:%make- name) (symbolicate '#:make- name)) ,lambda-list
                (multiple-value-bind (,root ,table)
@@ -258,6 +258,12 @@
                                                 ,(loop :for form := `(gethash ',child (scene2d-constructed-metadata ,name))
                                                          :then `(scene2d-container-content ,form)
                                                        :repeat i :finally (return form)))
+                                    :when (plusp i)
+                                      :collect `(defun (setf ,accessor) (,value ,name)
+                                                  (setf ,(loop :for form := `(gethash ',child (scene2d-constructed-metadata ,name))
+                                                                 :then `(scene2d-container-content ,form)
+                                                               :repeat i :finally (return form))
+                                                        ,value))
                                     :do (push (list (intern child-name (symbol-package name)) accessor) accessors)
                                     :until (or (emptyp trimmed-name) (string= trimmed-name child-name)))))
              ,(when constructor
