@@ -64,6 +64,11 @@
    #:scene2d-scale
    #:scene2d-color
    #:scene2d-rotation
+   #:scene2d-position-
+   #:scene2d-origin-
+   #:scene2d-scale-
+   #:scene2d-color-
+   #:scene2d-rotation-
    #:ensure-scene2d-node
    #:scene2d-container
    #:scene2d-alignment

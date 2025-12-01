@@ -90,8 +90,8 @@
         (declare (type single-float width height x y origin-x origin-y))
         (clet ((dest (foreign-alloca '(:struct raylib:rectangle)))
                (origin (foreign-alloca '(:struct raylib:vector2))))
-          (setf (-> dest raylib:x) x 
-                (-> dest raylib:y) y 
+          (setf (-> dest raylib:x) x
+                (-> dest raylib:y) y
                 (-> dest raylib:width) width
                 (-> dest raylib:height) height
                 (-> origin raylib:x) (* origin-x (/ width border-width))
@@ -316,6 +316,74 @@
 (defmethod scene2d-draw :around ((container scene2d-container) position origin scale rotation tint)
   (with-scene2d-container-transform (container (position origin scale rotation tint))
     (call-next-method container position origin scale rotation tint)))
+
+(defgeneric scene2d-traverse (operation node)
+  (:method-combination or :most-specific-last)
+  (:method or ((operation function) (node t)))
+  (:method or ((operation function) (node scene2d-node))
+    (funcall operation node))
+  (:method or ((operation function) (nodes list))
+    (loop :for node :in nodes :thereis (scene2d-traverse operation node)))
+  (:method or ((operation function) (node scene2d-container))
+    (when-let ((result (scene2d-traverse operation (scene2d-container-content node))))
+      (funcall operation node result))))
+
+(defgeneric scene2d-node-position- (child parent)
+  (:method ((child scene2d-node) (parent scene2d-container))
+    (let ((operation (lambda (node &optional result)
+                       (if result
+                           (raylib:vector2-add (scene2d-node-position node) result)
+                           (when (eq node child) (scene2d-node-position node))))))
+      (declare (dynamic-extent operation))
+      (scene2d-traverse operation parent))))
+
+(defgeneric scene2d-node-origin- (child parent)
+  (:method ((child scene2d-node) (parent scene2d-container))
+    (let ((operation (lambda (node &optional result)
+                       (if result
+                           (raylib:vector2-add (scene2d-node-origin node) result)
+                           (when (eq node child) (scene2d-node-origin node))))))
+      (declare (dynamic-extent operation))
+      (scene2d-traverse operation parent))))
+
+(defgeneric scene2d-node-scale- (child parent)
+  (:method ((child scene2d-node) (parent scene2d-container))
+    (let ((operation (lambda (node &optional result)
+                       (if result
+                           (raylib:vector2-multiply (scene2d-node-scale node) result)
+                           (when (eq node child) (scene2d-node-scale node))))))
+      (declare (dynamic-extent operation))
+      (scene2d-traverse operation parent))))
+
+(defgeneric scene2d-node-color- (child parent)
+  (:method ((child scene2d-node) (parent scene2d-container))
+    (let ((operation (lambda (node &optional result)
+                       (if result
+                           (raylib:color-tint (scene2d-node-color node) result)
+                           (when (eq node child) (scene2d-node-color node))))))
+      (declare (dynamic-extent operation))
+      (scene2d-traverse operation parent))))
+
+(defgeneric scene2d-node-rotation- (child parent)
+  (:method ((child scene2d-node) (parent scene2d-container))
+    (let ((operation (lambda (node &optional result)
+                       (if result
+                           (locally (declare (type single-float result))
+                             (+ (scene2d-node-rotation node) result))
+                           (when (eq node child) (scene2d-node-rotation node))))))
+      (declare (dynamic-extent operation))
+      (scene2d-traverse operation parent))))
+
+(setf (fdefinition 'scene2d-position) (fdefinition 'scene2d-node-position)
+      (fdefinition 'scene2d-origin) (fdefinition 'scene2d-node-origin)
+      (fdefinition 'scene2d-scale) (fdefinition 'scene2d-node-scale)
+      (fdefinition 'scene2d-color) (fdefinition 'scene2d-node-color)
+      (fdefinition 'scene2d-rotation) (fdefinition 'scene2d-node-rotation)
+      (fdefinition 'scene2d-position-) (fdefinition 'scene2d-node-position-)
+      (fdefinition 'scene2d-origin-) (fdefinition 'scene2d-node-origin-)
+      (fdefinition 'scene2d-scale-) (fdefinition 'scene2d-node-scale-)
+      (fdefinition 'scene2d-color-) (fdefinition 'scene2d-node-color-)
+      (fdefinition 'scene2d-rotation-) (fdefinition 'scene2d-node-rotation-))
 
 (defstruct scene2d-alignment
   "A structure defining the 2D alignment of a SCENE2D-NODE."
