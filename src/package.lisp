@@ -5,10 +5,6 @@
    #:viewport
    #:begin-viewport
    #:end-viewport
-   #:draw-viewport
-   #:viewport-width
-   #:viewport-height
-   #:with-viewport
    #:screen-viewport
    #:make-screen-viewport
    #:+world-viewport-default-width+

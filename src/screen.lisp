@@ -57,23 +57,38 @@
 (defun do-screen-loop (&optional (viewport (make-fit-viewport)) (background raylib:+black+))
   "Use a SCREEN-MANAGER to handle the game loop and ensure that the content of the screen is drawn within VIEWPORT. The content outside the viewport will be cleared to BACKGROUND."
   (let ((screen-manager *screen-manager*))
-    (let ((texture (raylib:render-texture-texture
-                    (screen-manager-render-texture screen-manager)))
-          (width (viewport-width viewport))
-          (height (viewport-height viewport)))
-      (unless (and (= (raylib:texture-width texture) width)
-                   (= (raylib:texture-height texture) height))
-        (setf (screen-manager-render-texture screen-manager) (load-asset 'raylib:render-texture nil :width width :height height)
-              (screen-manager-vertically-flipped-render-texture screen-manager) (load-asset 'raylib:render-texture nil :width width :height height))))
-    (do-game-loop
-      (screen-manager-update screen-manager)
-      (raylib:with-drawing
-        (typecase background
-          (raylib:color (raylib:clear-background background))
-          (function (funcall background))
-          (t (scene2d-draw-simple background)))
-        (with-viewport viewport
-          (screen-manager-render screen-manager))))))
+    (multiple-value-bind (viewport-width viewport-height)
+        (etypecase viewport
+          ((or screen-viewport fit-viewport stretch-viewport)
+           (values #'raylib:get-screen-width #'raylib:get-screen-height))
+          (post-effect-viewport
+           (values
+            (lambda ()
+              (clet ((render-texture (cthe (:pointer (:struct raylib:render-texture)) (& (post-effect-manager-render-texture (post-effect-viewport-manager viewport))))))
+                (-> render-texture raylib:texture raylib:width)))
+            (lambda ()
+              (clet ((render-texture (cthe (:pointer (:struct raylib:render-texture)) (& (post-effect-manager-render-texture (post-effect-viewport-manager viewport))))))
+                (-> render-texture raylib:texture raylib:height))))))
+      (with-accessors ((render-texture-1 screen-manager-render-texture)
+                       (render-texture-2 screen-manager-vertically-flipped-render-texture))
+          screen-manager
+        (do-game-loop
+          (clet ((render-texture (cthe (:pointer (:struct raylib:render-texture)) (& render-texture-1))))
+            (let ((width (-> render-texture raylib:texture raylib:width))
+                  (height (-> render-texture raylib:texture raylib:height))
+                  (viewport-width (funcall viewport-width))
+                  (viewport-height (funcall viewport-height)))
+              (unless (and (= width viewport-width) (= height viewport-height))
+                (unload-asset (shiftf render-texture-1 (load-asset 'raylib:render-texture nil :width viewport-width :height viewport-height)))
+                (unload-asset (shiftf render-texture-2 (load-asset 'raylib:render-texture nil :width viewport-width :height viewport-height))))))
+          (screen-manager-update screen-manager)
+          (raylib:with-drawing
+            (typecase background
+              (raylib:color (raylib:clear-background background))
+              (function (funcall background))
+              (t (scene2d-draw-simple background)))
+            (with-viewport viewport
+              (screen-manager-render screen-manager))))))))
 
 (deftype screen-transition () 'screen-manager-update-function)
 

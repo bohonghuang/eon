@@ -3,13 +3,13 @@
 (defstruct (post-effect-manager (:constructor %make-post-effect-manager))
   (render-texture
    (load-asset 'raylib:render-texture nil
-               :width +world-viewport-default-width+
-               :height +world-viewport-default-height+)
+               :width (raylib:get-screen-width)
+               :height (raylib:get-screen-height))
    :type raylib:render-texture)
   (vertically-flipped-render-texture
    (load-asset 'raylib:render-texture nil
-               :width +world-viewport-default-width+
-               :height +world-viewport-default-height+)
+               :width (raylib:get-screen-width)
+               :height (raylib:get-screen-height))
    :type raylib:render-texture)
   (alpha-unpremultiply-shader
    (load-asset 'raylib:shader
@@ -53,14 +53,20 @@ void main() {
           (texture (& (-> render-texture raylib:texture))))
     (raylib:%draw-texture texture 0 0 (& raylib:+white+))))
 
-(defun post-effect-manager-begin (post-effect-manager)
-  (raylib:begin-texture-mode (post-effect-manager-vertically-flipped-render-texture post-effect-manager))
+(defun post-effect-manager-begin-texture-mode (render-texture)
+  (raylib:begin-texture-mode render-texture)
   (rlgl:set-blend-factors-separate #.rlgl:+src-alpha+ #.rlgl:+one-minus-src-alpha+ #.rlgl:+one+ #.rlgl:+one+ #.rlgl:+func-add+ #.rlgl:+max+)
   (raylib:begin-blend-mode #.(foreign-enum-value 'rlgl:blend-mode :custom-separate)))
 
-(defun post-effect-manager-end (post-effect-manager)
+(defun post-effect-manager-end-texture-mode ()
   (raylib:end-blend-mode)
-  (raylib:end-texture-mode)
+  (raylib:end-texture-mode))
+
+(defun post-effect-manager-begin (post-effect-manager)
+  (post-effect-manager-begin-texture-mode (post-effect-manager-vertically-flipped-render-texture post-effect-manager)))
+
+(defun post-effect-manager-end (post-effect-manager)
+  (post-effect-manager-end-texture-mode)
   (raylib:with-texture-mode (post-effect-manager-render-texture post-effect-manager)
     (raylib:clear-background raylib:+blank+)
     (raylib:with-shader-mode (post-effect-manager-alpha-unpremultiply-shader post-effect-manager)
@@ -86,8 +92,8 @@ void main() {
 
 (defun make-post-effect-viewport (&key
                                     (viewport (make-screen-viewport))
-                                    (width (viewport-width viewport))
-                                    (height (viewport-height viewport))
+                                    (width (raylib:get-screen-width))
+                                    (height (raylib:get-screen-height))
                                     (size (raylib:make-vector2 :x (coerce width 'single-float) :y (coerce height 'single-float)))
                                     (manager (make-post-effect-manager :size size))
                                     (processor #'funcall))
@@ -98,17 +104,9 @@ void main() {
   (post-effect-manager-begin (post-effect-viewport-manager viewport)))
 
 (defmethod end-viewport ((viewport post-effect-viewport))
-  (post-effect-manager-end (post-effect-viewport-manager viewport)))
-
-(defmethod viewport-width ((viewport post-effect-viewport))
-  (floor (raylib:vector2-x (post-effect-manager-size (post-effect-viewport-manager viewport)))))
-
-(defmethod viewport-height ((viewport post-effect-viewport))
-  (floor (raylib:vector2-y (post-effect-manager-size (post-effect-viewport-manager viewport)))))
-
-(defmethod draw-viewport ((viewport post-effect-viewport))
-  (let* ((post-effect-manager (post-effect-viewport-manager viewport))
-         (draw-function (lambda () (post-effect-manager-draw post-effect-manager))))
-    (declare (dynamic-extent draw-function))
-    (with-viewport (post-effect-viewport-viewport viewport)
-      (funcall (post-effect-viewport-processor viewport) draw-function))))
+  (let ((post-effect-manager (post-effect-viewport-manager viewport)))
+    (post-effect-manager-end post-effect-manager)
+    (let ((draw-function (lambda () (post-effect-manager-draw post-effect-manager))))
+      (declare (dynamic-extent draw-function))
+      (with-viewport (post-effect-viewport-viewport viewport)
+        (funcall (post-effect-viewport-processor viewport) draw-function)))))
