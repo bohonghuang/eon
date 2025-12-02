@@ -58,9 +58,10 @@
 (defmacro with-screen-manager-mode (screen-manager &body body)
   "Set the render target during the execution of BODY to the internal RAYLIB:RENDER-TEXTURE of SCREEN-MANAGER."
   (once-only (screen-manager)
-    `(progn
+    `(let ((*post-effect-manager-isolate-matrix-stack-p* nil))
        (screen-manager-update-size ,screen-manager)
-       (with-post-effect-manager-mode ,screen-manager . ,body))))
+       (with-post-effect-manager-mode ,screen-manager
+         ,@body))))
 
 (defun screen-manager-update-default (screen-manager)
   (unless (and (eq (screen-manager-render-function screen-manager) #'screen-manager-render-default)
