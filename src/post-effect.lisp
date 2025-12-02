@@ -50,18 +50,51 @@ void main() {
 (defun post-effect-manager-begin-texture-mode (render-texture)
   (raylib:begin-texture-mode render-texture)
   (rlgl:set-blend-factors-separate #.rlgl:+src-alpha+ #.rlgl:+one-minus-src-alpha+ #.rlgl:+one+ #.rlgl:+one+ #.rlgl:+func-add+ #.rlgl:+max+)
-  (raylib:begin-blend-mode #.(foreign-enum-value 'rlgl:blend-mode :custom-separate)))
+  (raylib:begin-blend-mode #.(foreign-enum-value 'rlgl:blend-mode :custom-separate))
+  (rlgl:load-identity))
 
 (defun post-effect-manager-end-texture-mode ()
   (raylib:end-blend-mode)
   (raylib:end-texture-mode))
 
+(defun post-effect-manager-begin-texture-mode+matrix (render-texture)
+  (rlgl:push-matrix)
+  (post-effect-manager-begin-texture-mode render-texture)
+  (rlgl:push-matrix)
+  (rlgl:load-identity))
+
+(defun post-effect-manager-end-texture-mode+matrix ()
+  (rlgl:pop-matrix)
+  (post-effect-manager-end-texture-mode)
+  (rlgl:push-matrix)
+  (rlgl:pop-matrix)
+  (rlgl:pop-matrix))
+
+(defparameter *post-effect-manager-isolate-matrix-stack-p* t)
+
+(defmacro post-effect-manager-with-texture-mode (render-texture &body body)
+  (with-gensyms (isolate-matrix-stack-p)
+    (once-only (render-texture)
+      `(let ((,isolate-matrix-stack-p *post-effect-manager-isolate-matrix-stack-p*))
+         (if ,isolate-matrix-stack-p
+             (post-effect-manager-begin-texture-mode+matrix ,render-texture)
+             (post-effect-manager-begin-texture-mode ,render-texture))
+         (unwind-protect (progn . ,body)
+           (if ,isolate-matrix-stack-p
+               (post-effect-manager-end-texture-mode+matrix)
+               (post-effect-manager-end-texture-mode)))))))
+
 (defun post-effect-manager-begin (post-effect-manager)
-  (post-effect-manager-begin-texture-mode (post-effect-manager-vertically-flipped-render-texture post-effect-manager)))
+  (funcall (if *post-effect-manager-isolate-matrix-stack-p*
+               #'post-effect-manager-begin-texture-mode+matrix
+               #'post-effect-manager-begin-texture-mode)
+           (post-effect-manager-vertically-flipped-render-texture post-effect-manager)))
 
 (defun post-effect-manager-end (post-effect-manager)
-  (post-effect-manager-end-texture-mode)
-  (raylib:with-texture-mode (post-effect-manager-render-texture post-effect-manager)
+  (funcall (if *post-effect-manager-isolate-matrix-stack-p*
+               #'post-effect-manager-end-texture-mode+matrix
+               #'post-effect-manager-end-texture-mode))
+  (post-effect-manager-with-texture-mode (post-effect-manager-render-texture post-effect-manager)
     (raylib:clear-background raylib:+blank+)
     (raylib:with-shader-mode (post-effect-manager-alpha-unpremultiply-shader post-effect-manager)
       (clet* ((render-texture (cthe (:pointer (:struct raylib:render-texture)) (& (post-effect-manager-vertically-flipped-render-texture post-effect-manager))))
