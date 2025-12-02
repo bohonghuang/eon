@@ -2,11 +2,11 @@
 
 (defstruct (scene2d-focusable (:include scene2d-container))
   "A SCENE2D-CONTAINER that contains a FOCAL-POINTS (world coordinate of its child node) used in SCENE2D-FOCUS-MANAGER."
-  (focal-bound (cons (raylib:vector2-zero) (raylib:vector2-zero)) :type (cons raylib:vector2 raylib:vector2)))
+  (focal-bounds (cons (raylib:vector2-zero) (raylib:vector2-zero)) :type (cons raylib:vector2 raylib:vector2)))
 
-(declaim (inline scene2d-focusable-focal-bound-value))
-(defun scene2d-focusable-focal-bound-value (focusable direction)
-  (destructuring-bind (lower . upper) (scene2d-focusable-focal-bound focusable)
+(declaim (inline scene2d-focusable-focal-bounds-value))
+(defun scene2d-focusable-focal-bounds-value (focusable direction)
+  (destructuring-bind (lower . upper) (scene2d-focusable-focal-bounds focusable)
     (ecase direction
       (:up (raylib:vector2-y lower))
       (:down (raylib:vector2-y upper))
@@ -27,7 +27,7 @@
                   (:right +scene2d-focusable-right+)
                   ((t) +vector2-zeros+)
                   ((nil) +scene2d-focusable-up-left+))))
-    (destructuring-bind (lower . upper) (scene2d-focusable-focal-bound focusable)
+    (destructuring-bind (lower . upper) (scene2d-focusable-focal-bounds focusable)
       (clet ((point (raylib:vector2-scale (raylib:vector2-add lower upper) 0.5))
              (size (raylib:vector2-subtract upper lower)))
         (declare (dynamic-extent size))
@@ -36,25 +36,25 @@
         (raylib:%vector2-add (& point) (& point) (& size))
         point))))
 
-(declaim (ftype (function (scene2d-focusable single-float single-float)) scene2d-focusable-update-upper-focal-bound))
-(defun scene2d-focusable-update-upper-focal-bound (focusable size-x size-y)
-  (destructuring-bind (lower . upper) (scene2d-focusable-focal-bound focusable)
+(declaim (ftype (function (scene2d-focusable single-float single-float)) scene2d-focusable-update-upper-focal-bounds))
+(defun scene2d-focusable-update-upper-focal-bounds (focusable size-x size-y)
+  (destructuring-bind (lower . upper) (scene2d-focusable-focal-bounds focusable)
     (setf (raylib:vector2-x upper) (+ (raylib:vector2-x lower) size-x)
           (raylib:vector2-y upper) (+ (raylib:vector2-y lower) size-y))))
 
 (defmethod scene2d-layout ((focusable scene2d-focusable))
   (call-next-method)
   (let ((size (rectangle-size (scene2d-bound focusable))))
-    (scene2d-focusable-update-upper-focal-bound focusable (raylib:vector2-x size) (raylib:vector2-y size))))
+    (scene2d-focusable-update-upper-focal-bounds focusable (raylib:vector2-x size) (raylib:vector2-y size))))
 
 (defmethod scene2d-draw ((focusable scene2d-focusable) position origin scale rotation tint)
-  (destructuring-bind (lower . upper) (scene2d-focusable-focal-bound focusable)
+  (destructuring-bind (lower . upper) (scene2d-focusable-focal-bounds focusable)
     (assert (<= (raylib:vector2-x lower) (raylib:vector2-x upper)))
     (assert (<= (raylib:vector2-y lower) (raylib:vector2-y upper)))
     (let ((size-x (- (raylib:vector2-x upper) (raylib:vector2-x lower)))
           (size-y (- (raylib:vector2-y upper) (raylib:vector2-y lower))))
       (raylib:%vector2-subtract (& lower) (& position) (& origin))
-      (scene2d-focusable-update-upper-focal-bound focusable size-x size-y))
+      (scene2d-focusable-update-upper-focal-bounds focusable size-x size-y))
     (call-next-method)))
 
 (defparameter *scene2d-focus-manager-distance-ratio* 0.25)
@@ -110,23 +110,23 @@
         (symmetric-impl
          (multiple-value-bind (lower-bound upper-bound)
              (loop :for focusable :in focusables
-                   :minimize (scene2d-focusable-focal-bound-value focusable :left) :into lower-bound :of-type single-float
-                   :maximize (scene2d-focusable-focal-bound-value focusable :right) :into upper-bound :of-type single-float
+                   :minimize (scene2d-focusable-focal-bounds-value focusable :left) :into lower-bound :of-type single-float
+                   :maximize (scene2d-focusable-focal-bounds-value focusable :right) :into upper-bound :of-type single-float
                    :finally (return (values lower-bound upper-bound)))
-           (let ((focused-bound-value (scene2d-focusable-focal-bound-value focused :right))
+           (let ((focused-bound-value (scene2d-focusable-focal-bounds-value focused :right))
                  (bound (+- upper-bound lower-bound)))
-             (flet ((directional-distance (focusable &aux (focal-bound-value (scene2d-focusable-focal-bound-value focusable :left)))
-                      (let ((distance (+- focal-bound-value focused-bound-value)))
-                        (if (minusp distance) (+ (+- focal-bound-value lower-bound) (+- upper-bound focused-bound-value) bound) distance)))
+             (flet ((directional-distance (focusable &aux (focal-bounds-value (scene2d-focusable-focal-bounds-value focusable :left)))
+                      (let ((distance (+- focal-bounds-value focused-bound-value)))
+                        (if (minusp distance) (+ (+- focal-bounds-value lower-bound) (+- upper-bound focused-bound-value) bound) distance)))
                     (non-directional-distance (focusable)
-                      (abs (/ (+ (- (scene2d-focusable-focal-bound-value focusable :up) (scene2d-focusable-focal-bound-value focused :up))
-                                 (- (scene2d-focusable-focal-bound-value focusable :down) (scene2d-focusable-focal-bound-value focused :down)))
+                      (abs (/ (+ (- (scene2d-focusable-focal-bounds-value focusable :up) (scene2d-focusable-focal-bounds-value focused :up))
+                                 (- (scene2d-focusable-focal-bounds-value focusable :down) (scene2d-focusable-focal-bounds-value focused :down)))
                               2.0))))
                (flet ((distance (focusable)
-                        (if (and (= (scene2d-focusable-focal-bound-value focused :left)
-                                    (scene2d-focusable-focal-bound-value focusable :left))
-                                 (= (scene2d-focusable-focal-bound-value focused :right)
-                                    (scene2d-focusable-focal-bound-value focusable :right)))
+                        (if (and (= (scene2d-focusable-focal-bounds-value focused :left)
+                                    (scene2d-focusable-focal-bounds-value focusable :left))
+                                 (= (scene2d-focusable-focal-bounds-value focused :right)
+                                    (scene2d-focusable-focal-bounds-value focusable :right)))
                             most-positive-single-float
                             (lerp distance-ratio (non-directional-distance focusable) (directional-distance focusable)))))
                  (setf focusables (sort focusables #'< :key #'distance)))))))))))
