@@ -42,12 +42,6 @@ void main() {
                                                   :width (floor (raylib:vector2-x size))
                                                   :height (floor (raylib:vector2-y size)))))
 
-(defun post-effect-manager-size (post-effect-manager)
-  (let ((texture (raylib:render-texture-texture (post-effect-manager-render-texture post-effect-manager))))
-    (raylib:make-vector2
-     :x (coerce (raylib:texture-width texture) 'single-float)
-     :y (coerce (raylib:texture-height texture) 'single-float))))
-
 (defun post-effect-manager-draw (post-effect-manager)
   (clet* ((render-texture (cthe (:pointer (:struct raylib:render-texture)) (& (post-effect-manager-render-texture post-effect-manager))))
           (texture (& (-> render-texture raylib:texture))))
