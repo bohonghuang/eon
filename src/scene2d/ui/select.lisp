@@ -69,7 +69,7 @@
                   :do (setf (scene2d-cell-alignment cell) alignment)))
   (call-next-method)
   (loop :for entry :in (select-box-entries select-box)
-        :for (lower . upper) := (scene2d-focusable-focal-bound entry)
+        :for (lower . upper) := (scene2d-focusable-focal-bounds entry)
         :do (raylib:copy-vector2 lower upper)))
 
 (defun select-box-entries (box)
