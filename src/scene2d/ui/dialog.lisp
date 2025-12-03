@@ -48,7 +48,7 @@
         :finally (scene2d-layout text))
   (loop :with style := (dialog-box-text-style text)
         :with alignment := (make-scene2d-alignment :vertical :start :horizontal :start)
-        :for line :in (prog1 (mapcan #'scene2d-box-children (scene2d-box-children text))
+        :for line :in (prog1 (delete nil (mapcan #'scene2d-box-children (scene2d-box-children text)) :key #'scene2d-box-content)
                         (setf (dialog-box-text-content text) nil))
         :for cell := (scene2d-box-add-child text (make-scene2d-margin :bottom (dialog-box-text-style-lines-spacing style) :content line))
         :do (setf (scene2d-cell-alignment cell) alignment)

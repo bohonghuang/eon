@@ -629,49 +629,53 @@
   "A SCENE2D-LAYOUT that fixes its size in one dimension, fill a portion of its children based on that dimension, and then arrange the remaining children by increasing the size in another dimension, repeating this process."
   (alignment (make-scene2d-alignment) :type scene2d-alignment))
 
-(defun scene2d-flow-box-children (box)
-  "Get the children of BOX."
-  (mapcan #'scene2d-box-children (scene2d-box-children box)))
+(defun scene2d-flow-box-children (flow-box)
+  "Get the children of FLOW-BOX."
+  (mapcan #'scene2d-box-children (scene2d-box-children flow-box)))
 
-(defun scene2d-flow-box-make-box (box)
-  (let ((new-box (make-scene2d-box :orientation (ecase (scene2d-flow-box-orientation box)
-                                                  (:vertical :horizontal)
-                                                  (:horizontal :vertical)))))
-    (scene2d-box-add-child box new-box)
-    new-box))
+(defun scene2d-flow-box-cells (flow-box)
+  (mappend #'scene2d-box-content (scene2d-box-children flow-box)))
 
-(defun scene2d-flow-box-add-child (box child)
-  "Add CHILD to BOX as its last child."
-  (scene2d-box-add-child (or (lastcar (scene2d-box-children box))
-                             (scene2d-flow-box-make-box box))
-                         child))
+(defun scene2d-flow-box-make-box (flow-box)
+  (let ((box (make-scene2d-box :orientation (ecase (scene2d-flow-box-orientation flow-box)
+                                              (:vertical :horizontal)
+                                              (:horizontal :vertical)))))
+    (scene2d-box-add-child flow-box box (scene2d-flow-box-alignment flow-box))
+    box))
 
-(defmethod scene2d-layout ((box scene2d-flow-box))
+(defun scene2d-flow-box-add-child (flow-box child)
+  "Add CHILD to FLOW-BOX as its last child."
+  (scene2d-box-add-child (scene2d-flow-box-make-box flow-box) child (scene2d-flow-box-alignment flow-box)))
+
+(defmethod scene2d-layout ((flow-box scene2d-flow-box))
   (macrolet ((symmetric-impl (&body vertical-impl &aux (horizontal-impl (copy-tree vertical-impl)))
                (subst-swap horizontal-impl
                  (raylib:vector2-x raylib:vector2-y)
                  (raylib:rectangle-width raylib:rectangle-height)
                  (width height)
+                 (max-width max-height)
                  (x y)
                  (:horizontal :vertical))
-               `(ecase (scene2d-box-orientation box)
+               `(ecase (scene2d-box-orientation flow-box)
                   (:vertical . ,vertical-impl)
                   (:horizontal . ,horizontal-impl))))
     (symmetric-impl
-     (loop :with children := (scene2d-flow-box-children box)
-           :initially (setf (scene2d-flow-box-content box) nil)
-           :for new-box := (make-scene2d-box :orientation :horizontal)
+     (loop :with alignment :of-type scene2d-alignment := (scene2d-flow-box-alignment flow-box)
+           :and max-width :of-type single-float := (raylib:vector2-x (scene2d-flow-box-size flow-box))
+           :and children :of-type list := (scene2d-flow-box-cells flow-box)
+           :with conses := (loop :for box :in (scene2d-box-children flow-box) :nconc (loop :for cons :on (shiftf (scene2d-box-content box) nil) :collect cons))
+           :initially (assert (= (length conses) (length children)))
+           :for box :in (scene2d-box-children flow-box)
            :while children
-           :do (loop :for child := (first children)
-                     :do (scene2d-layout child)
+           :do (loop :for cell := (first children)
+                     :for child := (scene2d-cell-content cell)
+                     :do (setf (scene2d-cell-alignment cell) alignment) (scene2d-layout child)
                      :summing (raylib:rectangle-width (scene2d-bound child)) :into width :of-type single-float
-                     :until (and (scene2d-box-content new-box)
-                                 (> width (raylib:vector2-x (scene2d-flow-box-size box))))
-                     :do (setf (scene2d-cell-alignment (scene2d-box-add-child new-box (pop children)))
-                               (scene2d-flow-box-alignment box))
-                     :while children
-                     :finally (setf (scene2d-cell-alignment (scene2d-box-add-child box new-box))
-                                    (scene2d-flow-box-alignment box))))))
+                     :until (and (scene2d-box-content box) (> width max-width))
+                     :do (nconcf (scene2d-box-content box) (let ((cons (pop conses)))
+                                                             (setf (car cons) (pop children) (cdr cons) nil)
+                                                             cons))
+                     :while children))))
   (call-next-method))
 
 (defstruct (scene2d-coordinate-truncator (:include scene2d-container))

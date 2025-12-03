@@ -90,7 +90,8 @@
   "An structure defining the style of SCENE2D-TILE-SCROLL. ENSURE-SCENE2D-NODE is called on the tile repeatly until the SCENE2D-TILE-SCROLL is filled."
   (tile (load-asset 'raylib:texture +scene2d-window-default-background-texture+ :format :png)))
 
-(defstruct (scene2d-tile-scroll (:include scene2d-layout))
+(defstruct (scene2d-tile-scroll (:include scene2d-layout)
+                                (:constructor %make-scene2d-tile-scroll))
   "A SCENE2D-NODE fills itself with tiles to match its size. When its offset changes, as long as the changes are continuous regardless of the value, the tiles smoothly scroll within the region."
   (style (make-scene2d-tile-scroll-style) :type scene2d-tile-scroll-style))
 
@@ -98,7 +99,7 @@
   "Get the offset of SCROLL."
   (scene2d-table-position (scene2d-tile-scroll-content scroll)))
 
-(defmethod scene2d-layout ((scroll scene2d-tile-scroll))
+(defun scene2d-tile-scroll-initialize (scroll)
   (loop :with table := (setf (scene2d-tile-scroll-content scroll) (make-scene2d-table))
         :with size := (scene2d-tile-scroll-size scroll)
         :and tile := (scene2d-tile-scroll-style-tile (scene2d-tile-scroll-style scroll))
@@ -114,6 +115,11 @@
            (raylib:%vector2-subtract
             (& (scene2d-tile-scroll-size scroll))
             (& (scene2d-size table)) (& tile-size))))
+
+(defun make-scene2d-tile-scroll (&rest args)
+  (let ((tile-scroll (apply #'%make-scene2d-tile-scroll args)))
+    (scene2d-tile-scroll-initialize tile-scroll)
+    tile-scroll))
 
 (defmethod scene2d-draw ((scroll scene2d-tile-scroll) position origin scale rotation tint)
   (let* ((child (scene2d-tile-scroll-content scroll))
