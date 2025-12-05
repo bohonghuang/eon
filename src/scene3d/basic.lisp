@@ -95,6 +95,15 @@
   "A SCENE3D-NODE that can contain other drawables as its children."
   (content nil))
 
+(defcstruct scene3d-transform
+  (position (:struct raylib:vector3))
+  (scale (:struct raylib:vector3))
+  (origin (:struct raylib:vector3))
+  (rotation (:struct raylib:vector4))
+  (color (:struct raylib:color)))
+
+(cobj:define-cobject-class (:struct scene3d-transform))
+
 (defmacro with-scene3d-container-transform ((container (position origin scale rotation tint)) &body body)
   (with-gensyms (target-position
                  target-origin
@@ -106,6 +115,7 @@
                  offset-scale
                  offset-color
                  offset-rotation
+                 original-transform
                  original-position
                  original-origin
                  original-scale
@@ -128,11 +138,12 @@
                                  ,target-rotation ,offset-rotation)
                           (ctype (:pointer (:struct raylib:color))
                                  ,target-color ,offset-color))
-         (clet ((,original-position (foreign-alloca '(:struct raylib:vector3)))
-                (,original-origin (foreign-alloca '(:struct raylib:vector3)))
-                (,original-rotation (foreign-alloca '(:struct raylib:vector4)))
-                (,original-scale (foreign-alloca '(:struct raylib:vector3)))
-                (,original-color (foreign-alloca '(:struct raylib:color))))
+         (clet* ((,original-transform (foreign-alloca '(:struct scene3d-transform)))
+                 (,original-position (& (-> ,original-transform position)))
+                 (,original-origin (& (-> ,original-transform origin)))
+                 (,original-scale (& (-> ,original-transform scale)))
+                 (,original-rotation (& (-> ,original-transform rotation)))
+                 (,original-color (& (-> ,original-transform color))))
            (csetf ([] ,original-position) ([] ,target-position)
                   ([] ,original-origin) ([] ,target-origin)
                   ([] ,original-rotation) ([] ,target-rotation)
