@@ -104,12 +104,19 @@ void main() {
         (rlgl:draw-render-batch-active)
         (rlgl:enable-color-blend)))))
 
+(defvar *post-effect-manager*)
+
+(setf (assoc-value *game-special-bindings* '*post-effect-manager*) 'nil)
+
 (defmacro with-post-effect-manager-mode (post-effect-manager &body body)
-  (once-only (post-effect-manager)
-    `(progn
-       (post-effect-manager-begin ,post-effect-manager)
-       (unwind-protect (progn . ,body)
-         (post-effect-manager-end ,post-effect-manager)))))
+  (with-gensyms (outer-post-effect-manager)
+    (once-only (post-effect-manager)
+      `(let ((,outer-post-effect-manager *post-effect-manager*))
+         (when ,outer-post-effect-manager (post-effect-manager-end ,outer-post-effect-manager))
+         (post-effect-manager-begin ,post-effect-manager)
+         (unwind-protect (let ((*post-effect-manager* ,post-effect-manager)) . ,body)
+           (post-effect-manager-end ,post-effect-manager)
+           (when ,outer-post-effect-manager (post-effect-manager-begin ,outer-post-effect-manager)))))))
 
 (defstruct (post-effect-viewport (:constructor %make-post-effect-viewport))
   "A VIEWPORT that allows the rendered content to be processed by its PROCESSOR and then rendered onto its inner VIEWPORT."
@@ -128,11 +135,13 @@ void main() {
   (%make-post-effect-viewport :viewport viewport :manager manager :processor processor))
 
 (defmethod begin-viewport ((viewport post-effect-viewport))
+  (assert (null (shiftf *post-effect-manager* (post-effect-viewport-manager viewport))))
   (post-effect-manager-begin (post-effect-viewport-manager viewport)))
 
 (defmethod end-viewport ((viewport post-effect-viewport))
   (let ((post-effect-manager (post-effect-viewport-manager viewport)))
     (post-effect-manager-end post-effect-manager)
+    (assert (eq (shiftf *post-effect-manager* nil) (post-effect-viewport-manager viewport)))
     (let ((draw-function (lambda () (post-effect-manager-draw post-effect-manager))))
       (declare (dynamic-extent draw-function))
       (with-viewport (post-effect-viewport-viewport viewport)
