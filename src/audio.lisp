@@ -39,7 +39,7 @@
              (,(symbolicate '#:set-audio-stream- parameter) ,stream (setf (gethash ,stream ,store) ,parameter))))))))
 
 (define-audio-parameter volume 1.0)
-(define-audio-parameter pan 0.5)
+(define-audio-parameter pan 0.0)
 (define-audio-parameter pitch 1.0)
 
 (defgeneric play-audio (audio)
@@ -164,7 +164,7 @@
       (progn
         (log:trace "Unpooled audio stream: ~S" stream)
         (setf (audio-volume stream) 1.0
-              (audio-pan stream) 0.5
+              (audio-pan stream) 0.0
               (audio-pitch stream) 1.0)
         stream)
       (let ((stream (load-asset 'raylib:audio-stream nil)))
