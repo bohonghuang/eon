@@ -256,6 +256,15 @@
 (defmethod scene2d-size ((container scene2d-container))
   (scene2d-size (scene2d-container-content container)))
 
+(defcstruct scene2d-transform
+  (position (:struct raylib:vector2))
+  (scale (:struct raylib:vector2))
+  (origin (:struct raylib:vector2))
+  (rotation :float)
+  (color (:struct raylib:color)))
+
+(cobj:define-cobject-class (:struct scene2d-transform))
+
 (defmacro with-scene2d-container-transform ((container (position origin scale rotation tint)) &body body)
   (with-gensyms (target-position
                  target-origin
@@ -267,6 +276,7 @@
                  offset-scale
                  offset-color
                  offset-rotation
+                 original-transform
                  original-position
                  original-origin
                  original-scale
@@ -287,10 +297,11 @@
                                  ,offset-position ,offset-origin ,offset-scale)
                           (ctype (:pointer (:struct raylib:color))
                                  ,target-color ,offset-color))
-         (clet ((,original-position (foreign-alloca '(:struct raylib:vector2)))
-                (,original-origin (foreign-alloca '(:struct raylib:vector2)))
-                (,original-scale (foreign-alloca '(:struct raylib:vector2)))
-                (,original-color (foreign-alloca '(:struct raylib:color))))
+         (clet* ((,original-transform (foreign-alloca '(:struct scene2d-transform)))
+                 (,original-position (& (-> ,original-transform position)))
+                 (,original-origin (& (-> ,original-transform origin)))
+                 (,original-scale (& (-> ,original-transform scale)))
+                 (,original-color (& (-> ,original-transform color))))
            (csetf ([] ,original-position) ([] ,target-position)
                   ([] ,original-origin) ([] ,target-origin)
                   ([] ,original-scale) ([] ,target-scale)
