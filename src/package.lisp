@@ -279,6 +279,10 @@
    #:promise-fade-audio
    #:crossfade-audio
    #:promise-crossfade-audio
+   ;; camera.lisp
+   #:with-render-texture
+   #:with-camera-2d
+   #:with-camera-3d
    ;; post-effect.lisp
    #:make-post-effect-viewport
    #:post-effect-viewport

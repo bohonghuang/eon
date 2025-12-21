@@ -58,17 +58,10 @@ void main() {
   (raylib:end-texture-mode))
 
 (defun post-effect-manager-begin-texture-mode+matrix (render-texture)
-  (rlgl:push-matrix)
-  (post-effect-manager-begin-texture-mode render-texture)
-  (rlgl:push-matrix)
-  (rlgl:load-identity))
+  (with-begin-matrix-mode (post-effect-manager-begin-texture-mode render-texture)))
 
 (defun post-effect-manager-end-texture-mode+matrix ()
-  (rlgl:pop-matrix)
-  (post-effect-manager-end-texture-mode)
-  (rlgl:push-matrix)
-  (rlgl:pop-matrix)
-  (rlgl:pop-matrix))
+  (with-end-matrix-mode (post-effect-manager-end-texture-mode)))
 
 (defparameter *post-effect-manager-isolate-matrix-stack-p* t)
 

@@ -16,7 +16,7 @@
                (:file "texture" :depends-on ("package"))
                (:file "misc" :depends-on ("package" "texture"))
                (:file "asset" :depends-on ("package" "loop"))
-               (:file "viewport" :depends-on ("package" "asset"))
+               (:file "viewport" :depends-on ("package"))
                (:file "loop" :depends-on ("package"))
                (:file "input" :depends-on ("package" "loop"))
                (:module "scene2d"
@@ -42,7 +42,8 @@
                (:file "shader" :depends-on ("package" "asset"))
                (:file "tiled" :depends-on ("package" "scene2d" "loop" "texture" "asset"))
                (:file "audio" :depends-on ("package" "loop" "tween"))
-               (:file "post-effect" :depends-on ("package" "asset" "viewport"))
+               (:file "camera" :depends-on ("package"))
+               (:file "post-effect" :depends-on ("package" "asset" "viewport" "camera"))
                (:file "screen" :depends-on ("package" "loop" "asset" "tween" "shader" "post-effect"))
                (:file "shadow" :depends-on ("package" "viewport" "scene2d")))
   :in-order-to ((test-op (test-op #:eon/test))))
