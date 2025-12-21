@@ -4,8 +4,9 @@
   "A renderer used to contain and render a shadow map."
   (camera (raylib:make-camera-3d) :read-only t)
   (canvas nil :type scene2d-canvas :read-only t)
-  (thunk #'values :type function)
-  (matrix (raylib:make-matrix) :type raylib:matrix))
+  (matrix (raylib:make-matrix) :type raylib:matrix)
+  (scene #'values :type function)
+  (scene-camera (raylib:make-camera-3d) :type raylib:camera-3d))
 
 (defun make-shadow-map-renderer (&key
                                    (camera (raylib:make-camera-3d))
@@ -27,7 +28,8 @@
                                             (rlgl:%get-matrix-projection proj)
                                             (rlgl:%get-matrix-modelview view)
                                             (raylib:%matrix-multiply (& (shadow-map-renderer-matrix renderer)) proj view))
-                                          (funcall (shadow-map-renderer-thunk renderer))))))))
+                                          (let ((*scene3d-camera* (shadow-map-renderer-scene-camera renderer)))
+                                            (funcall (shadow-map-renderer-scene renderer)))))))))
   (raylib:set-texture-filter
    (texture-region-texture (scene2d-canvas-content (shadow-map-renderer-canvas renderer)))
    (foreign-enum-value 'raylib:texture-filter filter))
@@ -37,9 +39,12 @@
   "Return the texture of RENDERER."
   (texture-region-texture (scene2d-canvas-content (shadow-map-renderer-canvas renderer))))
 
-(defun shadow-map-renderer-render (renderer &optional thunk)
-  "Make RENDERER render its shadow map using THUNK."
-  (when thunk (setf (shadow-map-renderer-thunk renderer) thunk))
+(defun shadow-map-renderer-render (renderer &optional scene)
+  "Make RENDERER render its shadow map using SCENE."
+  (when scene
+    (setf (shadow-map-renderer-scene renderer) scene)
+    (when *scene3d-camera*
+      (setf (shadow-map-renderer-scene-camera renderer) *scene3d-camera*)))
   (scene2d-canvas-render (shadow-map-renderer-canvas renderer))
-  (let ((thunk (shadow-map-renderer-thunk renderer)))
-    (unless (eq thunk #'values) thunk)))
+  (let ((scene (shadow-map-renderer-scene renderer)))
+    (unless (eq scene #'values) scene)))

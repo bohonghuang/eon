@@ -2,11 +2,10 @@
 
 (defvar *tiled-tileset-texture-table* nil)
 
+(define-symbol-macro *tiled-renderer-camera* *scene2d-camera*)
+
 (defmacro with-tiled-tileset-texture-table (&body body)
   `(let ((*tiled-tileset-texture-table* (or *tiled-tileset-texture-table* (make-hash-table)))) . ,body))
-
-(defvar *tiled-renderer-camera* nil
-  "A variable that needs to be bound to a CAMERA-2D when creating a TILED-RENDERER if optimization of rendering performance is required based on the camera's view.")
 
 (defun tiled-tileset-texture (tileset)
   (let ((table (or *tiled-tileset-texture-table* (make-hash-table)))
@@ -91,79 +90,89 @@
                                                                               :collect (cons duration (tiled-tile-texture-region (tiled:frame-tile frame))))))
                                                                  animated-tiles))
                                                          texture-region-cons)))
-                          :when (cadr offset-region) :collect offset-region)))
-             (multiple-value-bind (bound-predicate position-predicate)
-                 (if-let ((camera *tiled-renderer-camera*))
-                   (let ((target (raylib:camera-2d-target camera))
-                         (offset (raylib:camera-2d-offset camera)))
-                     (symbol-macrolet ((zoom (raylib:camera-2d-zoom camera)))
-                       (let ((|(+ (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom))| 0.0)
-                             (|(- (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom) (* (coerce tile-width 'single-float) (raylib:vector2-x scale)))| 0.0)
-                             (|(+ (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom))| 0.0)
-                             (|(- (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom) (* (coerce tile-height 'single-float) (raylib:vector2-y scale)))| 0.0))
-                         (declare (type single-float
-                                        |(+ (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom))|
-                                        |(- (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom) (* (coerce tile-width 'single-float) (raylib:vector2-x scale)))|
-                                        |(+ (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom))|
-                                        |(- (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom) (* (coerce tile-height 'single-float) (raylib:vector2-y scale)))|))
-                         (values
-                          (lambda (position origin scale rotation tint)
-                            (declare (ignore origin rotation tint))
-                            (setf |(+ (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom))|
-                                  (+ (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom))
-                                  |(- (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom) (* (coerce tile-width 'single-float) (raylib:vector2-x scale)))|
-                                  (- (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom) (* (coerce tile-width 'single-float) (raylib:vector2-x scale)))
-                                  |(+ (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom))|
-                                  (+ (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom))
-                                  |(- (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom) (* (coerce tile-height 'single-float) (raylib:vector2-y scale)))|
-                                  (- (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom) (* (coerce tile-height 'single-float) (raylib:vector2-y scale))))
-                            (and
-                             (>= |(+ (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom))|
-                                 (+ (raylib:vector2-x position) (* (coerce layer-offset-x 'single-float)
-                                                                   (raylib:vector2-x scale))))
-                             (>= |(+ (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom))|
-                                 (+ (raylib:vector2-y position) (* (coerce layer-offset-y 'single-float)
-                                                                   (raylib:vector2-y scale))))
-                             (>= (+ (raylib:vector2-x position) (* (+ (coerce layer-offset-x 'single-float)
-                                                                      (coerce layer-width 'single-float))
-                                                                   (raylib:vector2-x scale)))
-                                 (- (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom)))
-                             (>= (+ (raylib:vector2-y position) (* (+ (coerce layer-offset-y 'single-float)
-                                                                      (coerce layer-height 'single-float))
-                                                                   (raylib:vector2-y scale)))
-                                 (- (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom)))))
-                          (lambda (position origin scale rotation tint)
-                            (declare (ignore origin scale rotation tint))
-                            (not
-                             (or
-                              (< |(+ (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom))| (raylib:vector2-x position))
-                              (< (raylib:vector2-x position) |(- (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom) (* (coerce tile-width 'single-float) (raylib:vector2-x scale)))|)
-                              (< |(+ (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom))| (raylib:vector2-y position))
-                              (< (raylib:vector2-y position) |(- (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom) (* (coerce tile-height 'single-float) (raylib:vector2-y scale)))|))))))))
-                   (values (constantly t) (constantly t)))
-               (declare (type (function (raylib:vector2 raylib:vector2 raylib:vector2 single-float raylib:color) (values boolean)) position-predicate bound-predicate))
-               (lambda (&optional
-                          (position position)
-                          (origin origin)
-                          (scale scale)
-                          (rotation rotation)
-                          (tint color))
-                 (when (funcall bound-predicate position origin scale rotation tint)
-                   (loop :for (texture-region-cons . frames) :in animated-tiles
-                         :for current-duration :of-type single-float
-                           := (coerce (mod (game-loop-time) (coerce (the single-float (car (first frames))) 'double-float)) 'single-float)
-                         :do (setf (car texture-region-cons) (loop :for current-texture-region :of-type texture-region := (cdr (first frames)) :then texture-region
-                                                                   :for (duration . texture-region) :of-type (single-float . texture-region) :in frames
-                                                                   :if (< duration current-duration)
-                                                                     :return current-texture-region
-                                                                   :finally (return current-texture-region))))
-                   (setf (raylib:rectangle-width dest) (* (coerce tile-width 'single-float) (raylib:vector2-x scale))
-                         (raylib:rectangle-height dest) (* (coerce tile-height 'single-float) (raylib:vector2-y scale)))
-                   (loop :for ((offset-x . offset-y) . (region . nil)) :in offset-regions
-                         :do (setf (raylib:rectangle-x dest) (+ (raylib:vector2-x position) (* (the single-float offset-x) (raylib:vector2-x scale)))
-                                   (raylib:rectangle-y dest) (+ (raylib:vector2-y position) (* (the single-float offset-y) (raylib:vector2-y scale))))
-                         :when (funcall position-predicate offset origin scale rotation tint)
-                           :do (raylib:draw-texture-pro (texture-region-texture region) (texture-region-region region) dest origin rotation tint)))))))))
+                          :when (cadr offset-region) :collect offset-region))
+                  (bound-predicate
+                    (let ((|(+ (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom))| 0.0)
+                          (|(- (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom) (* (coerce tile-width 'single-float) (raylib:vector2-x scale)))| 0.0)
+                          (|(+ (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom))| 0.0)
+                          (|(- (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom) (* (coerce tile-height 'single-float) (raylib:vector2-y scale)))| 0.0)
+                          (target (raylib:make-vector2))
+                          (offset (raylib:make-vector2)))
+                      (declare (type single-float
+                                     |(+ (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom))|
+                                     |(- (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom) (* (coerce tile-width 'single-float) (raylib:vector2-x scale)))|
+                                     |(+ (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom))|
+                                     |(- (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom) (* (coerce tile-height 'single-float) (raylib:vector2-y scale)))|))
+                      (let ((position-predicate-t
+                              (lambda (position origin scale rotation tint)
+                                (declare (ignore origin scale rotation tint))
+                                (not
+                                 (or
+                                  (< |(+ (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom))| (raylib:vector2-x position))
+                                  (< (raylib:vector2-x position) |(- (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom) (* (coerce tile-width 'single-float) (raylib:vector2-x scale)))|)
+                                  (< |(+ (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom))| (raylib:vector2-y position))
+                                  (< (raylib:vector2-y position) |(- (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom) (* (coerce tile-height 'single-float) (raylib:vector2-y scale)))|)))))
+                            (position-predicate-nil nil)
+                            (position-predicate-null (constantly t)))
+                        (lambda (position origin scale rotation tint)
+                          (declare (ignore origin rotation tint))
+                          (if-let ((camera *tiled-renderer-camera*))
+                            (let ((zoom (raylib:camera-2d-zoom camera)))
+                              (clet* ((camera (cthe (:pointer (:struct raylib:camera-2d)) (& camera)))
+                                      (camera-target (& (-> camera raylib:target)))
+                                      (camera-offset (& (-> camera raylib:offset)))
+                                      (target (cthe (:pointer (:struct raylib:vector2)) (& target)))
+                                      (offset (cthe (:pointer (:struct raylib:vector2)) (& offset))))
+                                (csetf target camera-target offset camera-offset))
+                              (setf |(+ (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom))|
+                                    (+ (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom))
+                                    |(- (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom) (* (coerce tile-width 'single-float) (raylib:vector2-x scale)))|
+                                    (- (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom) (* (coerce tile-width 'single-float) (raylib:vector2-x scale)))
+                                    |(+ (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom))|
+                                    (+ (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom))
+                                    |(- (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom) (* (coerce tile-height 'single-float) (raylib:vector2-y scale)))|
+                                    (- (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom) (* (coerce tile-height 'single-float) (raylib:vector2-y scale))))
+                              (if (and
+                                   (>= |(+ (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom))|
+                                       (+ (raylib:vector2-x position) (* (coerce layer-offset-x 'single-float)
+                                                                         (raylib:vector2-x scale))))
+                                   (>= |(+ (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom))|
+                                       (+ (raylib:vector2-y position) (* (coerce layer-offset-y 'single-float)
+                                                                         (raylib:vector2-y scale))))
+                                   (>= (+ (raylib:vector2-x position) (* (+ (coerce layer-offset-x 'single-float)
+                                                                            (coerce layer-width 'single-float))
+                                                                         (raylib:vector2-x scale)))
+                                       (- (raylib:vector2-x target) (/ (raylib:vector2-x offset) zoom)))
+                                   (>= (+ (raylib:vector2-y position) (* (+ (coerce layer-offset-y 'single-float)
+                                                                            (coerce layer-height 'single-float))
+                                                                         (raylib:vector2-y scale)))
+                                       (- (raylib:vector2-y target) (/ (raylib:vector2-y offset) zoom))))
+                                  position-predicate-t
+                                  position-predicate-nil))
+                            position-predicate-null))))))
+             (declare (type (function (raylib:vector2 raylib:vector2 raylib:vector2 single-float raylib:color) (values (or (function (raylib:vector2 raylib:vector2 raylib:vector2 single-float raylib:color) (values boolean)) null))) bound-predicate))
+             (lambda (&optional
+                        (position position)
+                        (origin origin)
+                        (scale scale)
+                        (rotation rotation)
+                        (tint color))
+               (when-let ((position-predicate (funcall bound-predicate position origin scale rotation tint)))
+                 (loop :for (texture-region-cons . frames) :in animated-tiles
+                       :for current-duration :of-type single-float
+                         := (coerce (mod (game-loop-time) (coerce (the single-float (car (first frames))) 'double-float)) 'single-float)
+                       :do (setf (car texture-region-cons) (loop :for current-texture-region :of-type texture-region := (cdr (first frames)) :then texture-region
+                                                                 :for (duration . texture-region) :of-type (single-float . texture-region) :in frames
+                                                                 :if (< duration current-duration)
+                                                                   :return current-texture-region
+                                                                 :finally (return current-texture-region))))
+                 (setf (raylib:rectangle-width dest) (* (coerce tile-width 'single-float) (raylib:vector2-x scale))
+                       (raylib:rectangle-height dest) (* (coerce tile-height 'single-float) (raylib:vector2-y scale)))
+                 (loop :for ((offset-x . offset-y) . (region . nil)) :in offset-regions
+                       :do (setf (raylib:rectangle-x dest) (+ (raylib:vector2-x position) (* (the single-float offset-x) (raylib:vector2-x scale)))
+                                 (raylib:rectangle-y dest) (+ (raylib:vector2-y position) (* (the single-float offset-y) (raylib:vector2-y scale))))
+                       :when (funcall position-predicate offset origin scale rotation tint)
+                         :do (raylib:draw-texture-pro (texture-region-texture region) (texture-region-region region) dest origin rotation tint))))))))
       (t (constantly nil)))))
 
 (declaim (ftype (function (tiled:tiled-map) (values tiled-renderer list)) tiled-map-renderer))

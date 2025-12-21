@@ -945,6 +945,9 @@
         (update-shader-uniforms uniforms shader))
       (call-next-method))))
 
+(defvar *scene2d-camera* nil
+  "Dynamically bound RAYLIB:CAMERA-2D needed when rendering some SCENE2D-NODEs.")
+
 (defstruct (scene2d-canvas (:include scene2d-image)
                            (:constructor %make-scene2d-canvas))
   "A SCENE2D-IMAGE used for rendering anything rendered in another rendering stage, often used for implementing post-processing effects or rendering 3D scenes within a 2D scene."

@@ -15,11 +15,14 @@
 
 (defmacro with-camera-2d (camera &body body)
   "Like RAYLIB:WITH-MODE-2D, but protect and reset the matrix stack."
-  `(raylib:with-mode-2d ,camera . ,body))
+  (once-only (camera)
+    `(raylib:with-mode-2d ,camera
+       (let ((*scene2d-camera* ,camera)) . ,body))))
 
 (defmacro with-camera-3d (camera &body body)
   "Like RAYLIB:WITH-MODE-3D, but protect and reset the matrix stack."
-  `(progn
-     (with-begin-matrix-mode (raylib:begin-mode-3d ,camera))
-     (unwind-protect (progn . ,body)
-       (with-end-matrix-mode (raylib:end-mode-3d)))))
+  (once-only (camera)
+    `(progn
+       (with-begin-matrix-mode (raylib:begin-mode-3d ,camera))
+       (unwind-protect (let ((*scene3d-camera* ,camera)) . ,body)
+         (with-end-matrix-mode (raylib:end-mode-3d))))))

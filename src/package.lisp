@@ -257,7 +257,7 @@
    ;; shader.lisp
    #:define-shaderable-uniforms
    ;; tiled.lisp
-   #:*tiled-renderer-camera*
+   #:*scene2d-camera*
    #:tiled-renderer
    #:tiled-layer-renderer
    #:tiled-map-renderer
@@ -304,6 +304,8 @@
    #:make-shadow-map-renderer
    #:shadow-map-renderer-matrix
    #:shadow-map-renderer-texture
+   #:shadow-map-renderer-scene
+   #:shadow-map-renderer-scene-camera
    #:shadow-map-renderer-render))
 
 (in-package #:eon)

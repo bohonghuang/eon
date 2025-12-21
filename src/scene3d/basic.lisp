@@ -208,7 +208,7 @@
   (apply #'make-scene3d-container :content object args))
 
 (defvar *scene3d-camera* nil
-  "A variable that needs to be bound to the current CAMERA-3D when rendering certain SCENE3D-NODEs.")
+  "Dynamically bound RAYLIB:CAMERA-3D needed when rendering some SCENE3D-NODEs.")
 
 (defstruct (scene3d-billboard (:include scene3d-container))
   "A SCENE3D-NODE that can render its content (a TEXTURE-REGION) as a billboard (a quad that always faces *SCENE3D-CAMERA*)."
