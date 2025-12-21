@@ -153,8 +153,8 @@
               (return-from pressed-char nil))))))
 
 (defun promise-pressed-char ()
-  "Wait for a character to be pressed and return a PROMISE:PROMISE of it."
-  (promise:with-promise (succeed)
+  "Wait for a character to be pressed and return a PROMISE of it."
+  (with-promise (succeed)
     (add-game-loop-hook
      (lambda ()
        (when-let ((char (pressed-char)))
@@ -162,8 +162,8 @@
      :before #'not)))
 
 (defun promise-pressed-controller-button ()
-  "Wait for a key to be pressed and return a PROMISE:PROMISE of it."
-  (promise:with-promise (succeed)
+  "Wait for a key to be pressed and return a PROMISE of it."
+  (with-promise (succeed)
     (add-game-loop-hook
      (lambda ()
        (when-let ((key (pressed-controller-button)))

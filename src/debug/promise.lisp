@@ -75,7 +75,7 @@
          (case ,result . ,cases)))))
 
 (defun promise-dropped-files ()
-  (let ((promise (promise:with-promise (succeed)
+  (let ((promise (with-promise (succeed)
                    (let ((path-list (raylib:make-file-path-list)))
                      (add-game-loop-hook
                       (lambda ()

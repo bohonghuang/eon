@@ -46,7 +46,7 @@
   (:method ((sound raylib:sound))
     (values
      sound
-     (promise:with-promise (succeed)
+     (with-promise (succeed)
        (raylib:play-sound sound)
        (add-game-loop-hook
         (lambda () (if (raylib:is-sound-playing sound) t (progn (succeed) nil)))
@@ -54,7 +54,7 @@
   (:method ((music raylib:music))
     (values
      music
-     (promise:with-promise (succeed)
+     (with-promise (succeed)
        (raylib:play-music-stream music)
        (add-game-loop-hook
         (lambda () (if (raylib:is-music-stream-playing music) (progn (raylib:update-music-stream music) t) (progn (succeed) nil)))
@@ -62,7 +62,7 @@
   (:method ((stream raylib:audio-stream))
     (values
      stream
-     (promise:with-promise (succeed)
+     (with-promise (succeed)
        (raylib:play-audio-stream stream)
        (add-game-loop-hook
         (lambda () (if (raylib:is-audio-stream-playing stream) t (progn (succeed) nil)))
@@ -183,7 +183,7 @@
         (sample-count +audio-stream-buffer-size-default+))
     (values
      stream
-     (promise:with-promise (succeed)
+     (with-promise (succeed)
        (raylib:play-audio-stream stream)
        (add-game-loop-hook
         (flet ((finish-playback () (play-audio-unload-audio-stream stream) (succeed) nil))
@@ -199,7 +199,7 @@
         :after #'identity)))))
 
 (defun promise-play-audio (audio)
-  "Play AUDIO and return a PROMISE:PROMISE which is fulfilled when the playback is finished."
+  "Play AUDIO and return a PROMISE which is fulfilled when the playback is finished."
   (multiple-value-bind (audio promise) (play-audio audio)
     (values promise audio)))
 
@@ -211,8 +211,8 @@
                         :duration duration)))
 
 (defun promise-fade-audio (audio volume &optional (duration 0.5))
-  "Like FADE-AUDIO, but return a PROMISE:PROMISE which is fulfilled when the fading is finished."
-  (promise:with-promise (succeed)
+  "Like FADE-AUDIO, but return a PROMISE which is fulfilled when the fading is finished."
+  (with-promise (succeed)
     (if (plusp duration)
         (let* ((tween (fade-audio audio volume duration))
                (callback (ute:callback tween)))
@@ -240,7 +240,7 @@
      promise)))
 
 (defun promise-crossfade-audio (from to &optional (duration-out 1.0) (duration-in 0.0))
-  "Like CROSSFADE-AUDIO, but return a PROMISE:PROMISE which is fulfilled when the crossfading is finished."
+  "Like CROSSFADE-AUDIO, but return a PROMISE which is fulfilled when the crossfading is finished."
   (multiple-value-bind (audio promise-crossfade-finish promise-playback-finish)
       (crossfade-audio from to duration-out duration-in)
     (values promise-crossfade-finish promise-playback-finish audio)))

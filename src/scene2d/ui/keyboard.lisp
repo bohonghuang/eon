@@ -135,7 +135,7 @@
            (scene2d-layout keyboard)))
 
 (defun virtual-keyboard-promise-char (keyboard)
-  "Allow the user to start selecting a character on the KEYBOARD using controller buttons. When a character is selected, the returned PROMISE:PROMISE is fulfilled with that character."
+  "Allow the user to start selecting a character on the KEYBOARD using controller buttons. When a character is selected, the returned PROMISE is fulfilled with that character."
   (async
     (loop
       (if-let ((index (await (selectable-container-promise-index keyboard nil))))

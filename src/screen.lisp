@@ -202,7 +202,7 @@ void main() {
   ("background" raylib:+black+ :type raylib:color))
 
 (defun promise-play-screen-transition (transition)
-  "Play TRANSITION and a PROMISE:PROMISE is fulfilled when this procedure is done."
+  "Play TRANSITION and a PROMISE is fulfilled when this procedure is done."
   (multiple-value-bind (transition-update-function transition-tween) (ensure-screen-transition transition)
     (with-accessors ((update-function screen-manager-update-function))
         *screen-manager*
@@ -221,7 +221,7 @@ void main() {
                                   &optional
                                     (transition-out (make-screen-transition-fade-out :duration 0.25))
                                     (transition-in (make-screen-transition-fade-in :duration 0.25)))
-  "Play TRANSITION-OUT, set the current screen to TARGET-SCREEN, and then play TRANSITION-IN. The returned PROMISE:PROMISE is fulfilled when this procedure is done."
+  "Play TRANSITION-OUT, set the current screen to TARGET-SCREEN, and then play TRANSITION-IN. The returned PROMISE is fulfilled when this procedure is done."
   (async
     (await (promise-play-screen-transition transition-out))
     (setf (current-screen) target-screen)

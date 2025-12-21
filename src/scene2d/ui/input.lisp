@@ -38,7 +38,7 @@
 (define-scene2d-default-construct-form input-field-style ())
 
 (defun input-field-promise-line (field)
-  "Allow the user to input content in FIELD, and the text string in FIELD will be returned as a PROMISE:PROMISE. The PROMISE:PROMISE will be fulfilled when the user presses the Enter key to indicate the completion of input."
+  "Allow the user to input content in FIELD, and the text string in FIELD will be returned as a PROMISE. The PROMISE will be fulfilled when the user presses the Enter key to indicate the completion of input."
   (let ((label (input-field-label field)))
     (async
       (loop

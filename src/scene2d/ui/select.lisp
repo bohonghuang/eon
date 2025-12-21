@@ -174,11 +174,12 @@
         :finally (return box)))
 
 (defun swappable-select-box-promise-index (box &optional (initial-index 0) (handler (constantly nil)))
-  "Like SELECT-BOX-PROMISE-INDEX, but allow the user to swap the children of two BOXes using the SELECT button. When the user confirms the swap, the value of the fulfilled PROMISE:PROMISE will be a CONS where the CAR and CDR represent the indices of the two children to be swapped."
+  "Like SELECT-BOX-PROMISE-INDEX, but allow the user to swap the children of two BOXes using the SELECT button. When the user confirms the swap, the value of the fulfilled PROMISE will be a CONS where the CAR and CDR represent the indices of the two children to be swapped."
   (let ((entries (select-box-entries box))
         (swap-entries (mapcar #'select-box-entry-content (select-box-entries box)))
         (swap-index nil))
-    (let* ((promise (promise:make))
+    (let* ((succeed nil)
+           (promise (with-promise (succeed) (setf succeed #'succeed)))
            (handler (lambda (manager &optional button)
                       (if button
                           (progn
@@ -186,7 +187,7 @@
                               (:select (let ((index (position (scene2d-focus-manager-focused manager) entries)))
                                          (when swap-index
                                            (setf (select-box-entry-focused-p (nth swap-index swap-entries)) nil)
-                                           (promise:succeed promise (cons index swap-index)))
+                                           (funcall succeed (cons index swap-index)))
                                          (setf swap-index (if (eql index swap-index) nil index))
                                          (when swap-index
                                            (setf (select-box-entry-focused-p (nth swap-index swap-entries)) t)))))

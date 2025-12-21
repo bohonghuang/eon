@@ -79,10 +79,10 @@ REPEAT can be:
                  (run-game-loop-hook (game-loop-context-loop-end-hook ,context))))))
 
 (defun promise-sleep (time)
-  "Non-blockingly sleep for the specified number of seconds indicated by TIME, and the returned PROMISE:PROMISE will be fulfilled afterwards."
+  "Non-blockingly sleep for the specified number of seconds indicated by TIME, and the returned PROMISE will be fulfilled afterwards."
   (let* ((sleep-secs (coerce time 'single-float))
          (secs 0.0))
-    (promise:with-promise (succeed)
+    (with-promise (succeed)
       (add-game-loop-hook
        (lambda ()
          (when (>= (incf secs (game-loop-delta-time)) sleep-secs)
@@ -95,8 +95,8 @@ REPEAT can be:
        (lparallel:end-kernel))))
 
 (defun promise-task (task)
-  "Send TASK to be executed in another worker non-blockingly, and its execution result will be returned as a PROMISE:PROMISE."
-  (promise:with-promise (succeed)
+  "Send TASK to be executed in another worker non-blockingly, and its execution result will be returned as a PROMISE."
+  (with-promise (succeed)
     (let ((game-loop-context *game-loop-context*))
       (lparallel:future
         (let ((*game-loop-context* game-loop-context))

@@ -138,10 +138,10 @@
              ((setf alpha) (value)
                (setf (raylib:color-a (scene2d-color label)) (* (truncate (setf alpha value)) 255))))
         (promise-tween (ute:tween :to (((alpha)) (1.0)) :duration duration :ease #'ute:linear-inout)))))
-  (:documentation "Return a PROMISE:PROMISE that is fulfilled after OBJECT is displayed as the label for DIALOG-BOX-TEXT."))
+  (:documentation "Return a PROMISE that is fulfilled after OBJECT is displayed as the label for DIALOG-BOX-TEXT."))
 
 (defun dialog-box-promise-display (box &optional (break-handler (lambda (has-next-p) (declare (ignore has-next-p)) (async))))
-  "Make BOX display the text previously set using (SETF DIALOG-BOX-STRING) with the typewriter effect. When the entire text is displayed, the returned PROMISE:PROMISE is fulfilled. BREAK-HANDLER is a function that is called with a parameter indicating whether there is another page or if the text has been fully displayed. It returns a PROMISE:PROMISE, and when this PROMISE:PROMISE is fulfilled, BOX continues to display the remaining content."
+  "Make BOX display the text previously set using (SETF DIALOG-BOX-STRING) with the typewriter effect. When the entire text is displayed, the returned PROMISE is fulfilled. BREAK-HANDLER is a function that is called with a parameter indicating whether there is another page or if the text has been fully displayed. It returns a PROMISE, and when this PROMISE is fulfilled, BOX continues to display the remaining content."
   (labels ((line-labels (line) (mapcar #'scene2d-margin-content (scene2d-box-children (scene2d-margin-content line))))
            (hide-line (line) (loop :for label :in (line-labels line) :do (setf (raylib:color-a (scene2d-color label)) 0))))
     (let* ((text (dialog-box-text box))
@@ -221,7 +221,7 @@
   "A combination of DIALOG-BOX-PROMISE-DISPLAY and DIALOG-BOX-PROMISE-CONFIRM. LAST-CONFIRM can take the following values:
 - T: User confirmation is still required after displaying the entire text.
 - :NEXT: User confirmation is still required after displaying the entire text, and the page indicator is shown.
-- NIL: The returned PROMISE:PROMISE will be fulfilled directly after displaying the entire text, without requiring user confirmation."
+- NIL: The returned PROMISE will be fulfilled directly after displaying the entire text, without requiring user confirmation."
   (dialog-box-promise-display box (lambda (has-next-p)
                                     (if (or last-confirm has-next-p)
                                         (dialog-box-promise-confirm box (or has-next-p (eql last-confirm :next)))

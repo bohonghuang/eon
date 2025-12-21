@@ -32,7 +32,7 @@
 (defmacro await-if-possible (form)
   (once-only (form)
     `(typecase ,form
-       (promise:promise (await ,form))
+       (promise (await ,form))
        (t ,form))))
 
 (defun selectable-container-selected-entry (container)
@@ -46,7 +46,7 @@
         :finally (return value)))
 
 (defun selectable-container-promise-index (container &optional (initial-index 0) (handler (constantly nil)))
-  "Allow the user to select a child of CONTAINER using directional buttons and return a PROMISE:PROMISE of the selected child's index. The child with INITIAL-INDEX will be selected by default. HANDLER is called before and after the user presses a button (moves the cursor or makes a selection). Before the button is pressed, it is called with FOCUS-MANAGER as the only parameter. After the button is pressed, it is called with FOCUS-MANAGER and the button pressed by the user as parameters, then if HANDLER returns a non-NIL value, it will be used to fulfill the PROMISE:PROMISE of this function, thereby terminating the user's selection."
+  "Allow the user to select a child of CONTAINER using directional buttons and return a PROMISE of the selected child's index. The child with INITIAL-INDEX will be selected by default. HANDLER is called before and after the user presses a button (moves the cursor or makes a selection). Before the button is pressed, it is called with FOCUS-MANAGER as the only parameter. After the button is pressed, it is called with FOCUS-MANAGER and the button pressed by the user as parameters, then if HANDLER returns a non-NIL value, it will be used to fulfill the PROMISE of this function, thereby terminating the user's selection."
   (let* ((entries (selectable-container-entries container))
          (initial-focused (etypecase initial-index
                             (non-negative-fixnum (nth initial-index entries))
