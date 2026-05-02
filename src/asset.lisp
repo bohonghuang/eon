@@ -257,9 +257,8 @@
   (catch 'load-asset (call-next-method)))
 
 (defmethod load-asset ((asset-type (eql 'raylib:image)) (source null) &key width height (format :uncompressed-r8g8b8a8))
-  (let* ((element-type (list 'unsigned-byte (* 8 (raylib:get-pixel-data-size 1 1 (foreign-enum-value 'raylib:pixel-format format)))))
-         (image (raylib:make-image :width width :height height :format (foreign-enum-value 'raylib:pixel-format format)
-                                   :mipmaps 1 :data (cobj:with-leaky-allocator (cobj:make-carray (* width height) :element-type element-type)))))
+  (let ((image (raylib:make-image :width width :height height :format (foreign-enum-value 'raylib:pixel-format format)
+                                  :mipmaps 1 :data (raylib:mem-alloc (raylib:get-pixel-data-size width height (foreign-enum-value 'raylib:pixel-format format))))))
     (throw 'load-asset (register-unshareable-asset image (cobj:pointer-cobject (& image) 'raylib:image)))))
 
 (defmethod load-asset :around ((asset-type (eql 'raylib:image)) (texture raylib:texture) &key)
